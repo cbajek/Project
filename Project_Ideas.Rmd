@@ -1,0 +1,12 @@
+---
+title: "Project_Ideas"
+author: "Jack Freier"
+date: "10/29/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This file is for project ideas.
