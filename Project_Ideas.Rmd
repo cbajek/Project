@@ -10,3 +10,5 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 This file is for project ideas.
+
+Effects of Aderall on Winter Ball experience?
