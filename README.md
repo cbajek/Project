@@ -1,3 +1,3 @@
-# my_test_repo1
+# Project
 
-ya digg?
+Intro to Data Science -- Final Project
