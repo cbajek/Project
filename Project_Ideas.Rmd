@@ -9,20 +9,49 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-This file is for project ideas.
 
-Effects of Aderall on Winter Ball experience?
+```{r, include=FALSE, message=FALSE}
+# Libraries
+library(tidyverse)
+```
 
-Brahmn can you see this?>
 
-Brahm stop yawning
+```{r}
+# Read the data into R
+Data = read.csv(file = 'MCM_NFLIS_Data.csv', header = FALSE)
 
-freier stop rippin ass
+# Create a data frame
+DF = data.frame(Year = Data$V1,
+                State = Data$V2,
+                County = Data$V3,
+                FIPS_State = Data$V4,
+                FIPS_County = Data$V5,
+                FIPS_Combined = Data$V6,
+                Substance = Data$V7,
+                Opioid_Reports = Data$V8,
+                Total_Drug_Reports_County = Data$V9,
+                Total_Drug_Reports_State = Data$V10)
 
-Chris u ugly
+# Extract relevant rows and reindex
+DF = DF[-1,]
+rownames(DF) = NULL
 
-Freier take off your hat
+# Transform factors into numeric values
+DF$Year = as.numeric(as.character(DF$Year))
+DF$Opioid_Reports = as.numeric(as.character(DF$Opioid_Reports))
+DF$Total_Drug_Reports_County = as.numeric(as.character(DF$Total_Drug_Reports_County))
+DF$Total_Drug_Reports_State = as.numeric(as.character(DF$Total_Drug_Reports_State))
 
-???
+# Compute total opioid reports for each year and county
+Annual_County <- DF %>%
+  group_by(Year, FIPS_Combined) %>%
+  summarize(Total_Opioid_Reports_County = sum(Opioid_Reports))
 
-jjj
+# Compute total opioid reports for each year and state
+Annual_State <- DF %>%
+  group_by(Year, FIPS_State) %>%
+  summarize(Total_Opioid_Reports_State = sum(Opioid_Reports))
+
+# Join opioid totals back to original dataset
+
+```
