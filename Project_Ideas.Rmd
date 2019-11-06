@@ -57,19 +57,24 @@ DF <- DF %>%
   inner_join(Annual_County, by = c("Year", "FIPS_Combined")) %>%
   inner_join(Annual_State, by = c("Year", "FIPS_State"))
 
+# Compute the proportion of opioid reports
+DF <- DF %>%
+  mutate(Prop_Opioid_Reports_County = Total_Opioid_Reports_County / Total_Drug_Reports_County) %>%
+  mutate(Prop_Opioid_Reports_State = Total_Opioid_Reports_State / Total_Drug_Reports_State)
+
 # Reorder Columns
-DF <- DF[c(1,2,3,4,5,6,7,8,11,12,9,10)]
+DF <- DF[c(1,2,3,4,5,6,7,8,11,12,9,10,13,14)]
 ```
 
 
 ```{r}
 # Create the first vizualization
 DF %>%
-  ggplot(aes(x = Year, y = Total_Opioid_Reports_State, color = State)) +
+  ggplot(aes(x = Year, y = Prop_Opioid_Reports_State, color = State)) +
   geom_line(size = 1.25) +
-  labs(x = "Year", y = "Total Opioid Reports") +
-  ggtitle("Annual Opioid Reports by State") +
+  labs(x = "Year", y = "Proportion of Opioid Reports") +
+  ggtitle("Proportion of Opioid Reports by State and Year") +
   scale_x_continuous(breaks = c(seq(2010, 2017, 1)), limits = c(2010, 2017)) +
-  scale_y_continuous(breaks = c(seq(0, 50000, 5000)), limits = c(0, 50000)) +
+  scale_y_continuous(breaks = c(seq(0, 0.5, 0.05)), limits = c(0, 0.5)) +
   theme_minimal()
 ```
