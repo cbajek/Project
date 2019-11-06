@@ -13,6 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r, include=FALSE, message=FALSE}
 # Libraries
 library(tidyverse)
+library(ggplot2)
 ```
 
 
@@ -71,5 +72,5 @@ DF %>%
   ggtitle("Annual Opioid Reports by State") +
   scale_x_continuous(breaks = c(seq(2010, 2017, 1)), limits = c(2010, 2017)) +
   scale_y_continuous(breaks = c(seq(0, 50000, 5000)), limits = c(0, 50000)) +
-  theme_minimal()
+  theme_light()
 ```
