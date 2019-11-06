@@ -2,7 +2,9 @@
 title: "Project_Ideas"
 author: "Jack Freier"
 date: "10/29/2019"
-output: html_document
+output:
+  html_document:
+    keep_md: yes
 ---
 
 ```{r setup, include=FALSE}
