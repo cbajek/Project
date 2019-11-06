@@ -2,7 +2,9 @@
 title: "Project_Ideas"
 author: "Jack Freier"
 date: "10/29/2019"
-output: html_document
+output:
+  html_document:
+    keep_md: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -13,6 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r, include=FALSE, message=FALSE}
 # Libraries
 library(tidyverse)
+library(ggplot2)
 ```
 
 
@@ -75,6 +78,15 @@ DF %>%
   labs(x = "Year", y = "Proportion of Opioid Reports") +
   ggtitle("Proportion of Opioid Reports by State and Year") +
   scale_x_continuous(breaks = c(seq(2010, 2017, 1)), limits = c(2010, 2017)) +
-  scale_y_continuous(breaks = c(seq(0, 0.5, 0.05)), limits = c(0, 0.5)) +
+  scale_y_continuous(breaks = c(seq(0, 0.5, 0.05)), labels = scales::percent, limits = c(0, 0.5)) +
   theme_minimal()
+```
+
+```{r}
+# Create Second Visualization
+# Still need to improve this obvi
+DF %>% 
+  ggplot(aes(x=Year,y=Total_Opioid_Reports_State)) +
+  geom_col() +
+  facet_wrap(~Substance)
 ```
