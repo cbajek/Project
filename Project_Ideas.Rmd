@@ -76,3 +76,13 @@ DF %>%
   scale_y_continuous(breaks = c(seq(0, 50000, 5000)), limits = c(0, 50000)) +
   theme_light()
 ```
+
+```{r}
+# Create Second Visualization
+# Still need to improve this obvi
+DF %>% 
+  ggplot(aes(x=Year,y=Total_Opioid_Reports_State)) +
+  geom_col() +
+  facet_wrap(~Substance)
+```
+
