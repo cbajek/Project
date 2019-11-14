@@ -21,29 +21,20 @@ library(ggplot2)
 
 ```{r}
 # Read the data into R
-Data = read.csv(file = 'MCM_NFLIS_Data.csv', header = FALSE)
+DF <- read_csv("MCM_NFLIS_Data.csv", 
+    col_types = cols(FIPS_Combined = col_character(), 
+        FIPS_State = col_character()))
 
-# Create a data frame
-DF = data.frame(Year = Data$V1,
-                State = Data$V2,
-                County = Data$V3,
-                FIPS_State = Data$V4,
-                FIPS_County = Data$V5,
-                FIPS_Combined = Data$V6,
-                Substance = Data$V7,
-                Opioid_Reports = Data$V8,
-                Total_Drug_Reports_County = Data$V9,
-                Total_Drug_Reports_State = Data$V10)
-
-# Extract relevant rows and reindex
-DF = DF[-1,]
-rownames(DF) = NULL
-
-# Transform factors into numeric values
-DF$Year = as.numeric(as.character(DF$Year))
-DF$Opioid_Reports = as.numeric(as.character(DF$Opioid_Reports))
-DF$Total_Drug_Reports_County = as.numeric(as.character(DF$Total_Drug_Reports_County))
-DF$Total_Drug_Reports_State = as.numeric(as.character(DF$Total_Drug_Reports_State))
+# Rename Variables
+DF <- DF %>%
+  rename(
+    Year = YYYY,
+    County = COUNTY,
+    Substance = SubstanceName,
+    Opioid_Reports = DrugReports,
+    Total_Drug_Reports_County = TotalDrugReportsCounty,
+    Total_Drug_Reports_State = TotalDrugReportsState
+    )
 
 # Compute total opioid reports for each year and county
 Annual_County <- DF %>%
