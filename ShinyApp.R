@@ -44,20 +44,33 @@ DF <- DF[c(1,2,3,4,5,6,7,8,11,12,9,10,13,14)]
 
 ui <- fluidPage(
   sliderInput(inputId = "years", label = "Year Range",
-              min = 2010, max = 2017, value = c(2010, 2017),sep = ""),
-  textInput("drug", "Drug", value = "", placeholder = "Oxycodone"),
-  selectInput("state", "State", choices = list(KY = "Kentucky", OH = "Ohio", PA = "Pennsylvania", VA = "Virginia", WV = "West Virginia")),
+              min = 2010, max = 2017, value = c(2010, 2017), sep = ""),
+  selectInput("state", "State", choices = list("Kentucky" = "KY", 
+                                               "Ohio" = "OH", 
+                                               "Pennsylvania" = "PA", 
+                                               "Virginia" = "VA", 
+                                               "West Virginia" = "WV")),
   submitButton(text = "Create Plot"),
   plotOutput(outputId = "timeplot")
 )
 
-server <- function(input, output) {
+server <- function(input, output){
   output$timeplot <- renderPlot({
+    # DF %>% 
+    #   filter(State == input$state) %>% 
+    #   ggplot() +
+    #   geom_line(aes(x = Year, y = Prop_Opioid_Reports_State), size = 2, color = "darkolivegreen4") +
+    #   scale_x_continuous(limits = input$years) +
+    #   scale_y_continuous(breaks = c(seq(0.20, 0.5, 0.05)), labels = scales::percent, limits = c(0.20, 0.5)) +
+    #   labs(x = "Year", y = "Proportion of Opioid Reports") +
+    #   theme_minimal()
     DF %>% 
-      filter(drug == input$name, sex == input$sex) %>% 
+      filter(State == input$state, Year %in% c(input$years[1]:input$years[2])) %>% 
+      group_by(Substance, Year) %>%
+      summarize(State_Sub_Total = sum(Opioid_Reports)) %>%
       ggplot() +
-      geom_line(aes(x = year, y = n)) +
-      scale_x_continuous(limits = input$years) +
+      geom_col(aes(x = Year, y = State_Sub_Total, fill = Substance)) +
+      labs(x = "Year", y = "State-Wide Opioid Reports") +
       theme_minimal()
   })
 }
