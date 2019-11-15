@@ -51,26 +51,32 @@ ui <- fluidPage(
                                                "Virginia" = "VA", 
                                                "West Virginia" = "WV")),
   submitButton(text = "Create Plot"),
-  plotOutput(outputId = "timeplot")
+  plotOutput(outputId = "timeplot1"),
+  plotOutput(outputId = "timeplot2")
 )
 
 server <- function(input, output){
-  output$timeplot <- renderPlot({
-    # DF %>% 
-    #   filter(State == input$state) %>% 
-    #   ggplot() +
-    #   geom_line(aes(x = Year, y = Prop_Opioid_Reports_State), size = 2, color = "darkolivegreen4") +
-    #   scale_x_continuous(limits = input$years) +
-    #   scale_y_continuous(breaks = c(seq(0.20, 0.5, 0.05)), labels = scales::percent, limits = c(0.20, 0.5)) +
-    #   labs(x = "Year", y = "Proportion of Opioid Reports") +
-    #   theme_minimal()
+  output$timeplot1 <- renderPlot({
+    DF %>%
+      filter(State == input$state) %>%
+      ggplot() +
+      geom_line(aes(x = Year, y = Prop_Opioid_Reports_State), size = 2, color = "darkolivegreen4") +
+      scale_x_continuous(limits = input$years) +
+      scale_y_continuous(breaks = c(seq(0.20, 0.5, 0.05)), labels = scales::percent, limits = c(0.20, 0.5)) +
+      labs(x = "Year", y = "Proportion of Opioid Reports") +
+      theme_minimal()
+  })
+  output$timeplot2 <- renderPlot({
     DF %>% 
-      filter(State == input$state, Year %in% c(input$years[1]:input$years[2])) %>% 
+      filter(State == input$state) %>% 
       group_by(Substance, Year) %>%
       summarize(State_Sub_Total = sum(Opioid_Reports)) %>%
-      ggplot() +
-      geom_col(aes(x = Year, y = State_Sub_Total, fill = Substance)) +
-      labs(x = "Year", y = "State-Wide Opioid Reports") +
+      ggplot(aes(x = Year, y = State_Sub_Total, fill = Substance)) +
+      geom_bar(stat = "identity") +
+      scale_x_continuous(breaks = c(input$years[1]:input$years[2]), 
+                         limits = c((input$years[1] - 1), (input$years[2] + 1))) +
+      labs(x = "Year", y = "Number of Opioid Reports") +
+      ggtitle("Statewide Occurences of Opioid Reports by Substance") +
       theme_minimal()
   })
 }
