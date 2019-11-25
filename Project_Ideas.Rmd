@@ -98,15 +98,17 @@ county_shp <- st_read("UScounties/UScounties.shp", quiet = TRUE)
 county_shp <- county_shp %>%
   filter(STATE_FIPS %in% c(21, 39, 42, 51, 54)) %>%
   mutate(FIPS_Combined = as.character(FIPS)) %>%
-  #mutate(geomPoly = st_cast(geometry, "POLYGON", group_or_split = FALSE)) %>%
+  mutate(geomPoly = st_cast(geometry, "POLYGON", group_or_split = FALSE)) %>%
   select(FIPS_Combined, geomPoly)
 
 # Join the shape file to the dataframe
 DF_Shp = DF %>%
   inner_join(county_shp, by = c("FIPS_Combined"))
 
+# Create the color palatte
 pal_prop_opioid <- colorNumeric("viridis", domain = DF_Shp$Prop_Opioid_Reports_County)
 
+# Create the map
 leaflet(data = DF_Shp) %>%
   addTiles() %>%
   addPolygons(
