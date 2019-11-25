@@ -83,7 +83,7 @@ DF %>%
 # Create Second Visualization
 # Still need to improve this obvi
 DF %>% 
-  ggplot(aes(x=Year,y=Total_Opioid_Reports_State)) +
+  ggplot(aes(x = Year, y = Total_Opioid_Reports_State)) +
   geom_col() +
   facet_wrap(~Substance)
 ```
@@ -92,8 +92,14 @@ DF %>%
 
 ```{r}
 # Read in the shape file and join dataframes
-county_shp <- st_read("tl_2017_us_county", quiet = TRUE)
+county_shp <- st_read("UScounties/UScounties.shp", quiet = TRUE)
 
+# Keep relevant states and columns
 county_shp <- county_shp %>%
-  mutate(FIPS_Combined = as.numeric(paste(, x$fos, sep = "")))
+  filter(STATE_FIPS %in% c(21, 39, 42, 51, 54)) %>%
+  mutate(FIPS_Combined = as.character(FIPS))
+  select(FIPS_Combined, geometry)
+
+DF_Shp = DF %>%
+  inner_join(county_shp, by = c("FIPS_Combined"))
 ```
