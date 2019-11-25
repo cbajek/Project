@@ -94,12 +94,32 @@ DF %>%
 # Read in the shape file and join dataframes
 county_shp <- st_read("UScounties/UScounties.shp", quiet = TRUE)
 
-# Keep relevant states and columns
+# Extract relevant states and variables
 county_shp <- county_shp %>%
   filter(STATE_FIPS %in% c(21, 39, 42, 51, 54)) %>%
-  mutate(FIPS_Combined = as.character(FIPS))
-  select(FIPS_Combined, geometry)
+  mutate(FIPS_Combined = as.character(FIPS)) %>%
+  #mutate(geomPoly = st_cast(geometry, "POLYGON", group_or_split = FALSE)) %>%
+  select(FIPS_Combined, geomPoly)
 
+# Join the shape file to the dataframe
 DF_Shp = DF %>%
   inner_join(county_shp, by = c("FIPS_Combined"))
+
+pal_prop_opioid <- colorNumeric("viridis", domain = DF_Shp$Prop_Opioid_Reports_County)
+
+leaflet(data = DF_Shp) %>%
+  addTiles() %>%
+  addPolygons(
+    stroke = FALSE,
+    label = ~FIPS_Combined,
+    fillColor = ~pal_prop_opioid(Prop_Opioid_Reports_County),
+    fillOpacity = 0.7,
+    smoothFactor = 0.5,
+    highlight = highlightOptions(weight = 5, color = "black", fillOpacity = 0.9,
+                                 bringToFront = FALSE)) %>%
+  addLegend(pal = pal_prop_opioid,
+            values = ~Prop_Opioid_Reports_County,
+            opacity = 0.5,
+            title = "Proportion of Opioid Reoports",
+            position = "bottomright")
 ```
