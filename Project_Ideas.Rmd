@@ -15,7 +15,13 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r, include=FALSE, message=FALSE}
 # Libraries
 library(tidyverse)
+library(devtools)
 library(ggplot2)
+library(openintro)
+library(maps)
+library(sf)
+library(leaflet)
+library(ggthemes)
 ```
 
 
@@ -80,4 +86,14 @@ DF %>%
   ggplot(aes(x=Year,y=Total_Opioid_Reports_State)) +
   geom_col() +
   facet_wrap(~Substance)
+```
+
+
+
+```{r}
+# Read in the shape file and join dataframes
+county_shp <- st_read("tl_2017_us_county", quiet = TRUE)
+
+county_shp <- county_shp %>%
+  mutate(FIPS_Combined = as.numeric(paste(, x$fos, sep = "")))
 ```
