@@ -43,6 +43,11 @@ DF <- DF %>%
     Total_Drug_Reports_State = TotalDrugReportsState
     )
 
+# Change county names to lowercase
+DF$County <- tolower(DF$County)
+DF$County <- paste(toupper(substr(DF$County, 1, 1)), 
+                   substr(DF$County, 2, nchar(DF$County)), sep="")
+
 # Compute total opioid reports for each year and county
 Annual_County <- DF %>%
   group_by(Year, FIPS_Combined) %>%
