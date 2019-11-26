@@ -103,14 +103,23 @@ county_shp_roanoke <- st_read("tl_2016_51_cousub/tl_2016_51_cousub.shp", quiet =
 
 # Extract relevant states and variables
 county_shp_roanoke <- county_shp_roanoke %>%
-  filter(NAME == "Roanoke")
+  select()
 
 county_shp <- county_shp %>%
   filter(STATE_FIPS %in% c(21, 39, 42, 51, 54)) %>%
   mutate(FIPS_Combined = as.character(FIPS)) %>%
   select(FIPS_Combined, geometry)
 
-county_shp[[2]][[373]] = county_shp_roanoke[[19]][[1]]
+# leaflet(data = county_shp_roanoke) %>%
+#   addTiles() %>%
+#   addPolygons(
+#     stroke = FALSE,
+#     fillColor = "black",
+#     fillOpacity = 0.7,
+#     smoothFactor = 0.5
+#   )
+
+county_shp[[2]][[373]] = county_shp_roanoke[[19]][[2]]
 
 # Join the shape file to the dataframe
 DF_Shp <- county_shp %>%
@@ -133,6 +142,6 @@ leaflet(data = DF_Shp) %>%
   addLegend(pal = pal_prop_opioid,
             values = ~Prop_Opioid_Reports_County,
             opacity = 0.5,
-            title = "Proportion of Opioid Reoports",
+            title = "Proportion of Opioid Reports",
             position = "bottomright")
 ```
