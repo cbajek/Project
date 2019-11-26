@@ -97,15 +97,20 @@ DF %>%
 
 
 ```{r}
-# Read in the shape file and join dataframes
+# Read in the shape files
 county_shp <- st_read("UScounties/UScounties.shp", quiet = TRUE)
+county_shp_roanoke <- st_read("tl_2016_51_cousub/tl_2016_51_cousub.shp", quiet = TRUE)
 
 # Extract relevant states and variables
+county_shp_roanoke <- county_shp_roanoke %>%
+  filter(NAME == "Roanoke")
+
 county_shp <- county_shp %>%
   filter(STATE_FIPS %in% c(21, 39, 42, 51, 54)) %>%
   mutate(FIPS_Combined = as.character(FIPS)) %>%
-  #mutate(geomPoly = st_cast(geometry, "POLYGON", group_or_split = FALSE)) %>%
   select(FIPS_Combined, geometry)
+
+county_shp[[2]][[373]] = county_shp_roanoke[[19]][[1]]
 
 # Join the shape file to the dataframe
 DF_Shp <- county_shp %>%
