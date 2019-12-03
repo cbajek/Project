@@ -23,6 +23,8 @@ library(sf)
 library(stringr)
 library(leaflet)
 library(ggthemes)
+
+library(rmapshaper)
 ```
 
 
@@ -115,6 +117,10 @@ DF <- DF[c(1,2,3,4,5,6,7,8,11,12,9,10,13,14)]
 county_shp <- st_read("UScounties/UScounties.shp", quiet = TRUE)
 state_shp <- st_read("states_21basic/states.shp", quiet = TRUE)
 
+# Simplify the shape files to improve performance
+# county_shp <- rmapshaper::ms_simplify(county_shp, keep = 0.05, keep_shapes = TRUE)
+# state_shp <- rmapshaper::ms_simplify(state_shp, keep = 0.05, keep_shapes = TRUE)
+
 # Extract relevant states and variables
 county_shp <- county_shp %>%
   filter(STATE_FIPS %in% c(21, 39, 42, 51, 54)) %>%
@@ -126,28 +132,43 @@ state_shp <- state_shp %>%
   mutate(FIPS_State = as.character(STATE_FIPS)) %>%
   select(FIPS_State, geometry)
 
-# Join the shape file to the dataframe
-DF_Shp <- county_shp %>%
+# Join the county shape file to the dataframe
+DF_Shp_County <- county_shp %>%
   inner_join(DF, by = "FIPS_Combined")
 
-DF_Shp <- state_shp %>%
-  inner_join(, by = "FIPS_State")
+DF_Shp_State <- state_shp %>%
+  inner_join(DF, by = "FIPS_State")
 
-# Create the color palatte
-pal_prop_opioid <- colorNumeric("viridis", domain = DF_Shp$Prop_Opioid_Reports_County)
+# Create the color palattes
+pal_prop_opioid <- colorNumeric("viridis", domain = DF_Shp_County$Prop_Opioid_Reports_County)
 
-# Create the map
-leaflet(data = DF_Shp) %>%
-  addTiles() %>%
-  addPolygons(
-  stroke = FALSE,
-  label = ~County,
-  fillColor = ~pal_prop_opioid(Prop_Opioid_Reports_County),
-  fillOpacity = 0.05,
-  smoothFactor = 0.5
-  #highlight = highlightOptions(weight = 5, color = "black", fillOpacity = 0.9,
-                               #bringToFront = FALSE)
-  ) %>%
+# Create the leaflet map
+leaflet(data = DF_Shp_County) %>%
+  addTiles(group = "Default Map") %>%
+  addPolygons(group = "County Data",
+              stroke = FALSE,
+              label = ~County,
+              fillColor = ~pal_prop_opioid(Prop_Opioid_Reports_County),
+              fillOpacity = 0.5,
+              smoothFactor = 0.5) %>%
+  addPolygons(data = DF_Shp_State,
+              group = "State Data",
+              stroke = FALSE,
+              label = ~State,
+              fillColor = ~pal_prop_opioid(Prop_Opioid_Reports_State),
+              fillOpacity = 0.5,
+              smoothFactor = 0.5) %>%
+  addPolygons(data = state_shp,
+              group = "State Outlines",
+              stroke = TRUE,
+              fill = FALSE,
+              weight = 2,
+              opacity = 1,
+              color = "salmon") %>%
+  addLayersControl(
+    baseGroups = c("Default"),
+    overlayGroups = c("County Data", "State Data", "State Outlines"),
+    options = layersControlOptions(collapsed = FALSE)) %>%
   addLegend(pal = pal_prop_opioid,
             values = ~Prop_Opioid_Reports_County,
             opacity = 0.5,

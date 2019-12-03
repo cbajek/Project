@@ -88,31 +88,33 @@ ui <- fluidPage(
   sliderInput(inputId = "years", label = "Year Range",
               min = 2010, max = 2017, value = 2010, sep = ""),
   submitButton(text = "Create Plots"),
-  leafletOutput("mymap")
+  leafletOutput("AppMap")
 )
 
 server <- function(input, output,session) {
-  output$mymap <- renderLeaflet({
-    DF_Shp %>%
-      filter(Year == input$years)
+  output$AppMap <- renderLeaflet({
     leaflet(data = DF_Shp) %>%
       addTiles() %>% 
-      addPolygons(stroke = FALSE,
-                  label = ~County,
-                  fillColor = ~pal_prop_opioid(Prop_Opioid_Reports_County),
-                  fillOpacity = 0.7,
-                  smoothFactor = 0.5,
-                  highlight = highlightOptions(weight = 5, color = "black", fillOpacity = 0.9,
-                                               bringToFront = FALSE)) %>%
       addLegend(pal = pal_prop_opioid,
                 values = ~Prop_Opioid_Reports_County,
                 opacity = 0.5,
                 title = "Proportion of Opioid Reports",
                 position = "bottomright")
   })
+  observeEvent(input$years, {
+    DF_Shp %>%
+      filter(Year == input$years) %>%
+      leafletProxy("AppMap") %>%
+      addPolygons(stroke = FALSE,
+                  label = ~County,
+                  fillColor = ~pal_prop_opioid(Prop_Opioid_Reports_County),
+                  fillOpacity = 0.7,
+                  smoothFactor = 0.5)
+  })
 }
 
 shinyApp(ui = ui, server = server)
+
 
 
 
