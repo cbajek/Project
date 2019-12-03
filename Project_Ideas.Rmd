@@ -24,7 +24,7 @@ library(stringr)
 library(leaflet)
 library(ggthemes)
 
-library(rmapshaper)
+#library(rmapshaper)
 ```
 
 
