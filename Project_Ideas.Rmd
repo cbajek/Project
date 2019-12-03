@@ -23,8 +23,6 @@ library(sf)
 library(stringr)
 library(leaflet)
 library(ggthemes)
-
-#library(rmapshaper)
 ```
 
 
@@ -117,10 +115,6 @@ DF <- DF[c(1,2,3,4,5,6,7,8,11,12,9,10,13,14)]
 county_shp <- st_read("UScounties/UScounties.shp", quiet = TRUE)
 state_shp <- st_read("states_21basic/states.shp", quiet = TRUE)
 
-# Simplify the shape files to improve performance
-# county_shp <- rmapshaper::ms_simplify(county_shp, keep = 0.05, keep_shapes = TRUE)
-# state_shp <- rmapshaper::ms_simplify(state_shp, keep = 0.05, keep_shapes = TRUE)
-
 # Extract relevant states and variables
 county_shp <- county_shp %>%
   filter(STATE_FIPS %in% c(21, 39, 42, 51, 54)) %>%
@@ -139,6 +133,15 @@ DF_Shp_County <- county_shp %>%
 DF_Shp_State <- state_shp %>%
   inner_join(DF, by = "FIPS_State")
 
+# Aggregate and average over the seven year span
+DF_Shp_County <- DF_Shp_County %>%
+  group_by(FIPS_Combined, County) %>%
+  summarize(Prop_Opioid_Reports_County = mean(Prop_Opioid_Reports_County))
+
+DF_Shp_State <- DF_Shp_State %>%
+  group_by(FIPS_State, State) %>%
+  summarize(Prop_Opioid_Reports_State = mean(Prop_Opioid_Reports_State))
+
 # Create the color palattes
 pal_prop_opioid <- colorNumeric("viridis", domain = DF_Shp_County$Prop_Opioid_Reports_County)
 
@@ -149,14 +152,14 @@ leaflet(data = DF_Shp_County) %>%
               stroke = FALSE,
               label = ~County,
               fillColor = ~pal_prop_opioid(Prop_Opioid_Reports_County),
-              fillOpacity = 0.5,
+              fillOpacity = 1,
               smoothFactor = 0.5) %>%
   addPolygons(data = DF_Shp_State,
               group = "State Data",
               stroke = FALSE,
               label = ~State,
               fillColor = ~pal_prop_opioid(Prop_Opioid_Reports_State),
-              fillOpacity = 0.5,
+              fillOpacity = 1,
               smoothFactor = 0.5) %>%
   addPolygons(data = state_shp,
               group = "State Outlines",
@@ -171,7 +174,7 @@ leaflet(data = DF_Shp_County) %>%
     options = layersControlOptions(collapsed = FALSE)) %>%
   addLegend(pal = pal_prop_opioid,
             values = ~Prop_Opioid_Reports_County,
-            opacity = 0.5,
+            opacity = 1,
             title = "Proportion of Opioid Reports",
             position = "bottomright")
 ```

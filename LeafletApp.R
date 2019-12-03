@@ -64,31 +64,40 @@ DF <- DF %>%
 # Reorder columns
 DF <- DF[c(1,2,3,4,5,6,7,8,11,12,9,10,13,14)]
 
-# Read in the shape file and join dataframes
+
+# Read in the shape files
 county_shp <- st_read("UScounties/UScounties.shp", quiet = TRUE)
+state_shp <- st_read("states_21basic/states.shp", quiet = TRUE)
 
 # Extract relevant states and variables
 county_shp <- county_shp %>%
   filter(STATE_FIPS %in% c(21, 39, 42, 51, 54)) %>%
   mutate(FIPS_Combined = as.character(FIPS)) %>%
-  #mutate(geomPoly = st_cast(geometry, "POLYGON", group_or_split = FALSE)) %>%
   select(FIPS_Combined, geometry)
 
-# Join the shape file to the dataframe
-DF_Shp <- county_shp %>%
+state_shp <- state_shp %>%
+  filter(STATE_FIPS %in% c(21, 39, 42, 51, 54)) %>%
+  mutate(FIPS_State = as.character(STATE_FIPS)) %>%
+  select(FIPS_State, geometry)
+
+# Join the county shape file to the dataframe
+DF_Shp_County <- county_shp %>%
   inner_join(DF, by = "FIPS_Combined")
 
-# Create the color palatte
-pal_prop_opioid <- colorNumeric("viridis", domain = DF_Shp$Prop_Opioid_Reports_County)
+DF_Shp_State <- state_shp %>%
+  inner_join(DF, by = "FIPS_State")
 
-
+DF_Shp <- DF_Shp %>%
+  group_by(Year, FIPS_Combined, County) %>%
+  summarize(Prop_Opioid_Reports_County = mean(Prop_Opioid_Reports_County))
 
 
 ui <- fluidPage(
   sliderInput(inputId = "years", label = "Year Range",
               min = 2010, max = 2017, value = 2010, sep = ""),
-  submitButton(text = "Create Plot"),
-  leafletOutput("AppMap")
+  #submitButton(text = "Create Plot"),
+  leafletOutput("AppMap"),
+  plotOutput(outputId = "timeplot")
 )
 
 server <- function(input, output, session) {
@@ -107,6 +116,18 @@ server <- function(input, output, session) {
                   opacity = 0.5,
                   title = "Proportion of Opioid Reports",
                   position = "bottomright")
+  })
+  output$timeplot <- renderPlot({
+    DF %>%
+      group_by(Substance, Year) %>%
+      summarize(Sub_Total = sum(Opioid_Reports)) %>%
+      ggplot(aes(x = Year, y = Sub_Total, fill = Substance)) +
+      geom_bar(stat = "identity") +
+      scale_x_continuous(breaks = c(input$years[1]:input$years[2]), 
+                         limits = c((input$years[1] - 1), (input$years[2] + 1))) +
+      labs(x = "Year", y = "Number of Opioid Reports") +
+      ggtitle("Statewide Occurences of Opioid Reports by Substance") +
+      theme_minimal()
   })
 }
 
