@@ -23,7 +23,6 @@ library(sf)
 library(stringr)
 library(leaflet)
 library(ggthemes)
-library(US)
 ```
 
 
@@ -114,6 +113,7 @@ DF <- DF[c(1,2,3,4,5,6,7,8,11,12,9,10,13,14)]
 ```{r}
 # Read in the shape files
 county_shp <- st_read("UScounties/UScounties.shp", quiet = TRUE)
+state_shp <- st_read("states_21basic/states.shp", quiet = TRUE)
 
 # Extract relevant states and variables
 county_shp <- county_shp %>%
@@ -121,9 +121,17 @@ county_shp <- county_shp %>%
   mutate(FIPS_Combined = as.character(FIPS)) %>%
   select(FIPS_Combined, geometry)
 
+state_shp <- state_shp %>%
+  filter(STATE_FIPS %in% c(21, 39, 42, 51, 54)) %>%
+  mutate(FIPS_State = as.character(STATE_FIPS)) %>%
+  select(FIPS_State, geometry)
+
 # Join the shape file to the dataframe
 DF_Shp <- county_shp %>%
   inner_join(DF, by = "FIPS_Combined")
+
+DF_Shp <- state_shp %>%
+  inner_join(, by = "FIPS_State")
 
 # Create the color palatte
 pal_prop_opioid <- colorNumeric("viridis", domain = DF_Shp$Prop_Opioid_Reports_County)
