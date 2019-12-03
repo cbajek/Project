@@ -87,29 +87,26 @@ pal_prop_opioid <- colorNumeric("viridis", domain = DF_Shp$Prop_Opioid_Reports_C
 ui <- fluidPage(
   sliderInput(inputId = "years", label = "Year Range",
               min = 2010, max = 2017, value = 2010, sep = ""),
-  submitButton(text = "Create Plots"),
+  submitButton(text = "Create Plot"),
   leafletOutput("AppMap")
 )
 
-server <- function(input, output,session) {
+server <- function(input, output, session) {
   output$AppMap <- renderLeaflet({
-    leaflet(data = DF_Shp) %>%
-      addTiles() %>% 
-      addLegend(pal = pal_prop_opioid,
-                values = ~Prop_Opioid_Reports_County,
-                opacity = 0.5,
-                title = "Proportion of Opioid Reports",
-                position = "bottomright")
-  })
-  observeEvent(input$years, {
     DF_Shp %>%
       filter(Year == input$years) %>%
-      leafletProxy("AppMap") %>%
-      addPolygons(stroke = FALSE,
-                  label = ~County,
-                  fillColor = ~pal_prop_opioid(Prop_Opioid_Reports_County),
-                  fillOpacity = 0.7,
-                  smoothFactor = 0.5)
+      leaflet() %>%
+        addTiles() %>% 
+        addPolygons(stroke = FALSE,
+                    label = ~County,
+                    fillColor = ~pal_prop_opioid(Prop_Opioid_Reports_County),
+                    fillOpacity = 0.7,
+                    smoothFactor = 0.5) %>%
+        addLegend(pal = pal_prop_opioid,
+                  values = ~Prop_Opioid_Reports_County,
+                  opacity = 0.5,
+                  title = "Proportion of Opioid Reports",
+                  position = "bottomright")
   })
 }
 
