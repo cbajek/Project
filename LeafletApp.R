@@ -9,8 +9,8 @@ library(leaflet)
 library(ggthemes)
 
 # Read the data into R
-DF <- read_csv("MCM_NFLIS_Data.csv", 
-               col_types = cols(FIPS_Combined = col_character(), 
+DF <- read_csv("MCM_NFLIS_Data.csv",
+               col_types = cols(FIPS_Combined = col_character(),
                                 FIPS_State = col_character()))
 
 # Rename variables
@@ -26,7 +26,7 @@ DF <- DF %>%
 
 # Change county names to lowercase
 DF$County <- tolower(DF$County)
-DF$County <- paste(toupper(substr(DF$County, 1, 1)), 
+DF$County <- paste(toupper(substr(DF$County, 1, 1)),
                    substr(DF$County, 2, nchar(DF$County)), sep="")
 
 # Compute total opioid reports for each year and county
@@ -119,12 +119,11 @@ server <- function(input, output, session) {
   })
   output$timeplot <- renderPlot({
     DF %>%
-      group_by(Substance, Year) %>%
+      filter(Year == input$years)
+      group_by(Substance) %>%
       summarize(Sub_Total = sum(Opioid_Reports)) %>%
       ggplot(aes(x = Year, y = Sub_Total, fill = Substance)) +
       geom_bar(stat = "identity") +
-      scale_x_continuous(breaks = c(input$years[1]:input$years[2]), 
-                         limits = c((input$years[1] - 1), (input$years[2] + 1))) +
       labs(x = "Year", y = "Number of Opioid Reports") +
       ggtitle("Statewide Occurences of Opioid Reports by Substance") +
       theme_minimal()
