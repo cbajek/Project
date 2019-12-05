@@ -90,7 +90,7 @@ DF_Shp <- DF_Shp %>%
   summarize(Prop_Opioid_Reports_County = mean(Prop_Opioid_Reports_County))
 
 # Create the color palattes
-pal_prop_opioid <- colorNumeric("viridis", domain = DF_Shp$Prop_Opioid_Reports)
+pal_prop_opioid <- colorNumeric("viridis", domain = DF_Shp$Prop_Opioid_Reports_County)
 
 ui <- fluidPage(
   sliderInput(inputId = "years", label = "Year Range",
@@ -119,7 +119,7 @@ server <- function(input, output, session) {
   })
   output$timeplot <- renderPlot({
     DF %>%
-      filter(Year == input$years)
+      filter(Year == input$years) %>%
       group_by(Substance) %>%
       summarize(Sub_Total = sum(Opioid_Reports)) %>%
       ggplot(aes(x = Year, y = Sub_Total, fill = Substance)) +
