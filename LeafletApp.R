@@ -81,16 +81,16 @@ state_shp <- state_shp %>%
   select(FIPS_State, geometry)
 
 # Join the county shape file to the dataframe
-DF_Shp_County <- county_shp %>%
+DF_Shp <- county_shp %>%
   inner_join(DF, by = "FIPS_Combined")
 
-DF_Shp_State <- state_shp %>%
-  inner_join(DF, by = "FIPS_State")
-
+# Summarize observations
 DF_Shp <- DF_Shp %>%
   group_by(Year, FIPS_Combined, County) %>%
   summarize(Prop_Opioid_Reports_County = mean(Prop_Opioid_Reports_County))
 
+# Create the color palattes
+pal_prop_opioid <- colorNumeric("viridis", domain = DF_Shp$Prop_Opioid_Reports)
 
 ui <- fluidPage(
   sliderInput(inputId = "years", label = "Year Range",
