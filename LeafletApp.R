@@ -119,7 +119,7 @@ server <- function(input, output, session) {
   })
   output$timeplot <- renderPlot({
     DF %>%
-      filter(Year == input$years)
+      filter(Year == input$years) %>% 
       group_by(Substance) %>%
       summarize(Sub_Total = sum(Opioid_Reports)) %>%
       ggplot(aes(x = Year, y = Sub_Total, fill = Substance)) +
