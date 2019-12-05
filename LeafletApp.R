@@ -120,12 +120,15 @@ server <- function(input, output, session) {
   output$timeplot <- renderPlot({
     DF %>%
       filter(Year == input$years) %>%
-      group_by(Substance) %>%
+      group_by(Substance, Year) %>%
       summarize(Sub_Total = sum(Opioid_Reports)) %>%
-      ggplot(aes(x = Year, y = Sub_Total, fill = Substance)) +
-      geom_bar(stat = "identity") +
-      labs(x = "Year", y = "Number of Opioid Reports") +
-      ggtitle("Statewide Occurences of Opioid Reports by Substance") +
+      ungroup() %>%
+      arrange(desc(Sub_Total)) %>%
+      top_n(10) %>%
+      ggplot(aes(x = fct_rev(fct_inorder(Substance)), y = Sub_Total, fill = Substance)) +
+      geom_col() +
+      coord_flip() +
+      labs(x = "Substance", y = "Number of Opioid Reports") +
       theme_minimal()
   })
 }
