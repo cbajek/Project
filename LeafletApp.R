@@ -85,17 +85,30 @@ DF_Shp <- county_shp %>%
   inner_join(DF, by = "FIPS_Combined")
 
 # Summarize observations
-DF_Shp <- DF_Shp %>%
+DF_Shp_Prop <- DF_Shp %>%
   group_by(Year, FIPS_Combined, County) %>%
   summarize(Prop_Opioid_Reports_County = mean(Prop_Opioid_Reports_County))
 
+DF_TotalDrug <- DF %>%
+  group_by(Year, FIPS_Combined, County) %>%
+  summarize(Total_Drug_Reports_County = mean(Total_Drug_Reports_County))
+
+DF_Shp <- DF_Shp_Prop %>%
+  inner_join(DF_TotalDrug, by = c("Year", "FIPS_Combined", "County"))
+
+# Create new obeservations for missing counties
+
+
 # Create the color palattes
 pal_prop_opioid <- colorNumeric("viridis", domain = DF_Shp$Prop_Opioid_Reports_County)
+pal_total_drug <- colorNumeric("viridis", domain = DF_Shp$Total_Drug_Reports_County)
 
 ui <- fluidPage(
   sliderInput(inputId = "years", label = "Year Range",
               min = 2010, max = 2017, value = 2010, sep = ""),
-  #submitButton(text = "Create Plot"),
+  selectInput(inputId = "stat", label = "Statistic", 
+              choices = list("Proportion of Opioid Reports" = "Prop_Opioid_Reports_County",
+                             "Total Drug Reports" = "Total_Drug_Reports_County")),
   leafletOutput("AppMap"),
   plotOutput(outputId = "timeplot")
 )
@@ -105,17 +118,42 @@ server <- function(input, output, session) {
     DF_Shp %>%
       filter(Year == input$years) %>%
       leaflet() %>%
-        addTiles() %>% 
-        addPolygons(stroke = FALSE,
+        addTiles(group = "Default") %>% 
+        addPolygons(group = "Proportion of Opioid Reports",
+                    stroke = FALSE,
                     label = ~County,
                     fillColor = ~pal_prop_opioid(Prop_Opioid_Reports_County),
                     fillOpacity = 0.7,
                     smoothFactor = 0.5) %>%
-        addLegend(pal = pal_prop_opioid,
+        addPolygons(group = "Total Drug Reports",
+                    stroke = FALSE,
+                    label = ~County,
+                    fillColor = ~pal_total_drug(Total_Drug_Reports_County),
+                    fillOpacity = 0.7,
+                    smoothFactor = 0.5) %>%
+        addPolygons(data = state_shp,
+                    group = "State Outlines",
+                    stroke = TRUE,
+                    fill = FALSE,
+                    weight = 2,
+                    opacity = 1,
+                    color = "black") %>%
+        addLegend(group = "Proportion of Opioid Reports",
+                  pal = pal_prop_opioid,
                   values = ~Prop_Opioid_Reports_County,
                   opacity = 0.5,
                   title = "Proportion of Opioid Reports",
-                  position = "bottomright")
+                  position = "bottomright") %>%
+        addLegend(group = "Total Drug Reports",
+                  pal = pal_total_drug,
+                  values = ~Total_Drug_Reports_County,
+                  opacity = 0.5,
+                  title = "Total Drug Reports",
+                  position = "bottomleft") %>%
+        addLayersControl(
+                  baseGroups = c("Default"),
+                  overlayGroups = c("Proportion of Opioid Reports", "Total Drug Reports","State Outlines"),
+                  options = layersControlOptions(collapsed = FALSE))
   })
   output$timeplot <- renderPlot({
     DF %>%
