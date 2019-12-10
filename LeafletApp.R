@@ -123,13 +123,13 @@ server <- function(input, output, session) {
                     stroke = FALSE,
                     label = ~County,
                     fillColor = ~pal_prop_opioid(Prop_Opioid_Reports_County),
-                    fillOpacity = 0.7,
+                    fillOpacity = 0.75,
                     smoothFactor = 0.5) %>%
         addPolygons(group = "Total Drug Reports",
                     stroke = FALSE,
                     label = ~County,
                     fillColor = ~pal_total_drug(Total_Drug_Reports_County),
-                    fillOpacity = 0.7,
+                    fillOpacity = 0.75,
                     smoothFactor = 0.5) %>%
         addPolygons(data = state_shp,
                     group = "State Outlines",
@@ -141,18 +141,18 @@ server <- function(input, output, session) {
         addLegend(group = "Proportion of Opioid Reports",
                   pal = pal_prop_opioid,
                   values = ~Prop_Opioid_Reports_County,
-                  opacity = 0.5,
+                  opacity = 1,
                   title = "Proportion of Opioid Reports",
                   position = "bottomright") %>%
         addLegend(group = "Total Drug Reports",
                   pal = pal_total_drug,
                   values = ~Total_Drug_Reports_County,
-                  opacity = 0.5,
+                  opacity = 1,
                   title = "Total Drug Reports",
                   position = "bottomleft") %>%
         addLayersControl(
                   baseGroups = c("Default"),
-                  overlayGroups = c("Proportion of Opioid Reports", "Total Drug Reports","State Outlines"),
+                  overlayGroups = c("State Outlines", "Proportion of Opioid Reports", "Total Drug Reports"),
                   options = layersControlOptions(collapsed = FALSE))
   })
   output$timeplot <- renderPlot({
