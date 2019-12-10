@@ -1,0 +1,41 @@
+---
+title: "Population Data"
+author: "Chris Bajek"
+date: "12/10/2019"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(stringr)
+```
+
+
+```{r}
+PopData <- read_csv("PopData1.csv") 
+```
+
+
+```{r}
+# Getting FIPS County Code to be 3 digits
+PopData <- PopData %>% 
+  mutate(FIPS_County = str_pad(string = COUNTY, width = 3, pad = "0", side = "left"))
+
+# Getting FIPS_Combined
+PopData <- PopData %>% 
+  mutate(FIPS_Combined = as.numeric(paste(PopData$STATE, PopData$FIPS_County, sep = "")))
+
+# Delete the word county
+PopData <- PopData %>%
+  mutate(County=str_remove(PopData$CTYNAME," County"))
+
+# Rename Variables
+PopData <- PopData %>%
+  rename(FIPS_State=STATE)
+
+# Select Wanted Variables
+PopData <- PopData %>%
+  select(County,FIPS_State,FIPS_County,FIPS_Combined,POPESTIMATE2010,
+         POPESTIMATE2011,POPESTIMATE2012,POPESTIMATE2013,POPESTIMATE2014,
+         POPESTIMATE2015,POPESTIMATE2016,POPESTIMATE2017)
+```
