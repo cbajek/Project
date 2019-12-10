@@ -103,6 +103,28 @@ DF_Shp <- DF_Shp_Prop %>%
 pal_prop_opioid <- colorNumeric("viridis", domain = DF_Shp$Prop_Opioid_Reports_County)
 pal_total_drug <- colorNumeric("viridis", domain = DF_Shp$Total_Drug_Reports_County)
 
+
+
+# Aggregate and average over the seven year span
+DF_Shp_County <- county_shp %>%
+  inner_join(DF, by = "FIPS_Combined")
+
+DF_Shp_State <- state_shp %>%
+  inner_join(DF, by = "FIPS_State")
+
+DF_Shp_County <- DF_Shp_County %>%
+  group_by(FIPS_Combined, County) %>%
+  summarize(Prop_Opioid_Reports_County = mean(Prop_Opioid_Reports_County))
+
+DF_Shp_State <- DF_Shp_State %>%
+  group_by(FIPS_State, State) %>%
+  summarize(Prop_Opioid_Reports_State = mean(Prop_Opioid_Reports_State))
+
+pal_prop_avg <- colorNumeric("viridis", domain = DF_Shp_County$Prop_Opioid_Reports_County)
+
+
+
+# Create the app
 ui <- fluidPage(
   sliderInput(inputId = "years", label = "Year Range",
               min = 2010, max = 2017, value = 2010, sep = ""),
@@ -110,7 +132,8 @@ ui <- fluidPage(
               choices = list("Proportion of Opioid Reports" = "Prop_Opioid_Reports_County",
                              "Total Drug Reports" = "Total_Drug_Reports_County")),
   leafletOutput("AppMap"),
-  plotOutput(outputId = "timeplot")
+  plotOutput(outputId = "timeplot"),
+  leafletOutput("AppMapAvg")
 )
 
 server <- function(input, output, session) {
@@ -118,7 +141,7 @@ server <- function(input, output, session) {
     DF_Shp %>%
       filter(Year == input$years) %>%
       leaflet() %>%
-        addTiles(group = "Default") %>% 
+        addTiles() %>% 
         addPolygons(group = "Proportion of Opioid Reports",
                     stroke = FALSE,
                     label = ~County,
@@ -140,19 +163,19 @@ server <- function(input, output, session) {
                     color = "black") %>%
         addLegend(group = "Proportion of Opioid Reports",
                   pal = pal_prop_opioid,
-                  values = ~Prop_Opioid_Reports_County,
+                  values = c(0, 1),
                   opacity = 1,
-                  title = "Proportion of Opioid Reports",
+                  title = "Proportion Opioid",
                   position = "bottomright") %>%
         addLegend(group = "Total Drug Reports",
                   pal = pal_total_drug,
-                  values = ~Total_Drug_Reports_County,
+                  values = c(0, 10000),
                   opacity = 1,
                   title = "Total Drug Reports",
                   position = "bottomleft") %>%
         addLayersControl(
-                  baseGroups = c("Default"),
-                  overlayGroups = c("State Outlines", "Proportion of Opioid Reports", "Total Drug Reports"),
+                  baseGroups = c("Proportion of Opioid Reports", "Total Drug Reports"),
+                  overlayGroups = c("State Outlines"),
                   options = layersControlOptions(collapsed = FALSE))
   })
   output$timeplot <- renderPlot({
@@ -168,6 +191,39 @@ server <- function(input, output, session) {
       coord_flip() +
       labs(x = "Substance", y = "Number of Opioid Reports") +
       theme_minimal()
+  })
+  output$AppMapAvg <- renderLeaflet({
+    leaflet(data = DF_Shp_County) %>%
+      addTiles(group = "Default Map") %>%
+      addPolygons(group = "County Data",
+                  stroke = FALSE,
+                  label = ~County,
+                  fillColor = ~pal_prop_avg(Prop_Opioid_Reports_County),
+                  fillOpacity = 1,
+                  smoothFactor = 0.5) %>%
+      addPolygons(data = DF_Shp_State,
+                  group = "State Data",
+                  stroke = FALSE,
+                  label = ~State,
+                  fillColor = ~pal_prop_avg(Prop_Opioid_Reports_State),
+                  fillOpacity = 1,
+                  smoothFactor = 0.5) %>%
+      addPolygons(data = state_shp,
+                  group = "State Outlines",
+                  stroke = TRUE,
+                  fill = FALSE,
+                  weight = 2,
+                  opacity = 1,
+                  color = "black") %>%
+      addLayersControl(
+        baseGroups = c("Default"),
+        overlayGroups = c("County Data", "State Data", "State Outlines"),
+        options = layersControlOptions(collapsed = FALSE)) %>%
+      addLegend(pal = pal_prop_avg,
+                values = ~Prop_Opioid_Reports_County,
+                opacity = 1,
+                title = "Proportion of Opioid Reports",
+                position = "bottomright")
   })
 }
 
