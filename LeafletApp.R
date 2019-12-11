@@ -8,6 +8,7 @@ library(sf)
 library(stringr)
 library(leaflet)
 library(ggthemes)
+library(shinythemes)
 
 # Read the opioid data into R
 DF <- read_csv("MCM_NFLIS_Data.csv",
@@ -126,6 +127,7 @@ pal_prop_avg <- colorNumeric("viridis", domain = DF_Shp_County$Prop_Opioid_Repor
 
 # Create the app itself
 ui <- fluidPage(
+  theme = shinytheme("readable"),
   h1(strong("Tracking the Spread of Opioids in Appalachia")),
   h2(strong("2010 - 2017")),
   hr(),
@@ -148,10 +150,11 @@ server <- function(input, output, session) {
     DF_Shp %>%
       filter(Year == input$years) %>%
       leaflet() %>%
-        addTiles() %>% 
+        addTiles() %>%
+        addTiles(group = "Default Map") %>%
         addPolygons(group = "Proportion of Opioid Reports",
                     stroke = FALSE,
-                    label = ~County,
+                    label = ~paste(County, round(Prop_Opioid_Reports_County, digits = 2)),
                     fillColor = ~pal_prop_opioid(Prop_Opioid_Reports_County),
                     fillOpacity = 0.75,
                     smoothFactor = 0.5) %>%
@@ -172,16 +175,16 @@ server <- function(input, output, session) {
                   pal = pal_prop_opioid,
                   values = c(0, 1),
                   opacity = 1,
-                  title = "Proportion Opioid",
+                  title = "Proportion <br> of Opioid <br> Reports",
                   position = "bottomright") %>%
         addLegend(group = "Total Drug Reports",
                   pal = pal_total_drug,
                   values = c(0, 10000),
                   opacity = 1,
-                  title = "Total Drug Reports",
+                  title = "Total <br> Drug <br> Reports",
                   position = "bottomleft") %>%
         addLayersControl(
-                  baseGroups = c("Proportion of Opioid Reports", "Total Drug Reports"),
+                  baseGroups = c("Default Map", "Proportion of Opioid Reports", "Total Drug Reports"),
                   overlayGroups = c("State Outlines"),
                   options = layersControlOptions(collapsed = FALSE)) %>%
         hideGroup("State Outlines")
@@ -194,14 +197,17 @@ server <- function(input, output, session) {
       ungroup() %>%
       arrange(desc(Sub_Total)) %>%
       top_n(10) %>%
-      ggplot(aes(x = fct_rev(fct_inorder(Substance)), y = Sub_Total, fill = Substance)) +
+      mutate(Substance = fct_inorder(Substance)) %>%
+      ggplot(aes(x = fct_rev(Substance), y = Sub_Total, fill = Substance)) +
       geom_col() +
       coord_flip() +
+      scale_fill_viridis_d() +
       labs(x = "Substance", y = "Number of Opioid Reports") +
       theme_minimal()
   })
   output$AppMapAvg <- renderLeaflet({
     leaflet(data = DF_Shp_County) %>%
+      addTiles() %>%
       addTiles(group = "Default Map") %>%
       addPolygons(group = "County Data",
                   stroke = FALSE,
@@ -224,13 +230,13 @@ server <- function(input, output, session) {
                   opacity = 1,
                   color = "black") %>%
       addLayersControl(
-        baseGroups = c("Default"),
-        overlayGroups = c("County Data", "State Data", "State Outlines"),
+        baseGroups = c("Default Map", "County Data", "State Data"),
+        overlayGroups = c("State Outlines"),
         options = layersControlOptions(collapsed = FALSE)) %>%
       addLegend(pal = pal_prop_avg,
                 values = ~Prop_Opioid_Reports_County,
                 opacity = 1,
-                title = "Proportion Opioid",
+                title = "Proportion <br> of Opioid <br> Reports",
                 position = "bottomright") %>%
       hideGroup("County Data") %>%
       hideGroup("State Data") %>%
@@ -239,10 +245,4 @@ server <- function(input, output, session) {
 }
 
 shinyApp(ui = ui, server = server)
-
-
-
-
-
-
 
