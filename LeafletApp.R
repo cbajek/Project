@@ -1,3 +1,4 @@
+# Libraries and packages
 library(tidyverse)
 library(devtools)
 library(ggplot2)
@@ -8,7 +9,7 @@ library(stringr)
 library(leaflet)
 library(ggthemes)
 
-# Read the data into R
+# Read the opioid data into R
 DF <- read_csv("MCM_NFLIS_Data.csv",
                col_types = cols(FIPS_Combined = col_character(),
                                 FIPS_State = col_character()))
@@ -63,7 +64,6 @@ DF <- DF %>%
 
 # Reorder columns
 DF <- DF[c(1,2,3,4,5,6,7,8,11,12,9,10,13,14)]
-
 
 # Read in the shape files
 county_shp <- st_read("UScounties/UScounties.shp", quiet = TRUE)
@@ -124,15 +124,22 @@ pal_prop_avg <- colorNumeric("viridis", domain = DF_Shp_County$Prop_Opioid_Repor
 
 
 
-# Create the app
+# Create the app itself
 ui <- fluidPage(
+  h1(strong("Tracking the Spread of Opioids in Appalachia")),
+  h2(strong("2010 - 2017")),
+  hr(),
   sliderInput(inputId = "years", label = "Year Range",
               min = 2010, max = 2017, value = 2010, sep = ""),
-  selectInput(inputId = "stat", label = "Statistic", 
-              choices = list("Proportion of Opioid Reports" = "Prop_Opioid_Reports_County",
-                             "Total Drug Reports" = "Total_Drug_Reports_County")),
+  # selectInput(inputId = "stat", label = "Statistic", 
+  #             choices = list("Proportion of Opioid Reports" = "Prop_Opioid_Reports_County",
+  #                            "Total Drug Reports" = "Total_Drug_Reports_County")),
+  h3(strong("Spatial Summary of Opioid Use")),
   leafletOutput("AppMap"),
+  h3(strong("Annual Breakdown by Substance Type")),
   plotOutput(outputId = "timeplot"),
+  hr(),
+  h3(strong("State and County -- Seven Year Averages")),
   leafletOutput("AppMapAvg")
 )
 
@@ -176,7 +183,8 @@ server <- function(input, output, session) {
         addLayersControl(
                   baseGroups = c("Proportion of Opioid Reports", "Total Drug Reports"),
                   overlayGroups = c("State Outlines"),
-                  options = layersControlOptions(collapsed = FALSE))
+                  options = layersControlOptions(collapsed = FALSE)) %>%
+        hideGroup("State Outlines")
   })
   output$timeplot <- renderPlot({
     DF %>%
@@ -222,8 +230,11 @@ server <- function(input, output, session) {
       addLegend(pal = pal_prop_avg,
                 values = ~Prop_Opioid_Reports_County,
                 opacity = 1,
-                title = "Proportion of Opioid Reports",
-                position = "bottomright")
+                title = "Proportion Opioid",
+                position = "bottomright") %>%
+      hideGroup("County Data") %>%
+      hideGroup("State Data") %>%
+      hideGroup("State Outlines")
   })
 }
 
