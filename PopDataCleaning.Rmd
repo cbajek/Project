@@ -17,38 +17,41 @@ PopData <- read_csv("PopData1.csv")
 
 
 ```{r}
-# Getting FIPS County Code to be 3 digits
+# Pad FIPS County code to 3 digits
 PopData <- PopData %>% 
   mutate(FIPS_County = str_pad(string = COUNTY, width = 3, pad = "0", side = "left"))
 
-# Getting FIPS_Combined
+# Combine FIPS State and FIPS County
 PopData <- PopData %>% 
-  mutate(FIPS_Combined = as.numeric(paste(PopData$STATE, PopData$FIPS_County, sep = "")))
+  mutate(FIPS_Combined = paste(PopData$STATE, PopData$FIPS_County, sep = ""))
 
-# Delete the word county
+# Extract county names
 PopData <- PopData %>%
-  mutate(County=str_remove(PopData$CTYNAME," County"))
+  mutate(County = str_remove(PopData$CTYNAME, " County"))
 
-# Rename Variables
+# Rename variables
 PopData <- PopData %>%
-  rename(FIPS_State=STATE)
+  rename(FIPS_State = STATE)
 
-# Select Wanted Variables
+# Select necessary variables
 PopData <- PopData %>%
-  select(County,FIPS_State,FIPS_County,FIPS_Combined,POPESTIMATE2010,
-         POPESTIMATE2011,POPESTIMATE2012,POPESTIMATE2013,POPESTIMATE2014,
-         POPESTIMATE2015,POPESTIMATE2016,POPESTIMATE2017)
-#Pivot Longer
+  select(County, FIPS_County, FIPS_State, FIPS_Combined, POPESTIMATE2010,
+         POPESTIMATE2011, POPESTIMATE2012, POPESTIMATE2013, POPESTIMATE2014,
+         POPESTIMATE2015, POPESTIMATE2016, POPESTIMATE2017)
+
+# Pivot longer
 PopData <- PopData %>% 
-  pivot_longer(cols = c("POPESTIMATE2010","POPESTIMATE2011","POPESTIMATE2012",
-                        "POPESTIMATE2013","POPESTIMATE2014","POPESTIMATE2015",
-                        "POPESTIMATE2016","POPESTIMATE2017"), 
-               names_to = "Year", values_to = "Population" )
-# Filtering observations of entire state
+  pivot_longer(cols = c("POPESTIMATE2010", "POPESTIMATE2011", "POPESTIMATE2012",
+                        "POPESTIMATE2013", "POPESTIMATE2014", "POPESTIMATE2015",
+                        "POPESTIMATE2016", "POPESTIMATE2017"), 
+               names_to = "Year", 
+               values_to = "Population")
+
+# Filter out observations at the state level
 PopData <- PopData %>% 
   filter(FIPS_County != "000")
 
-# Renaming Year Values
+# Rename year values
 PopData$Year[PopData$Year == "POPESTIMATE2010"] <- 2010
 PopData$Year[PopData$Year == "POPESTIMATE2011"] <- 2011
 PopData$Year[PopData$Year == "POPESTIMATE2012"] <- 2012
@@ -58,13 +61,12 @@ PopData$Year[PopData$Year == "POPESTIMATE2015"] <- 2015
 PopData$Year[PopData$Year == "POPESTIMATE2016"] <- 2016
 PopData$Year[PopData$Year == "POPESTIMATE2017"] <- 2017
 
-# Converting variable types to match DF_Shp 
-PopData$Year <- as.numeric(PopData$Year)
-PopData$FIPS_Combined <- as.character(PopData$FIPS_Combined)
+# Select necessary variables
+PopData <- PopData %>%
+  select(Year, County, FIPS_Combined, Population)
 
-#Further Selecting
-PopData <- PopData %>% 
-  select(FIPS_Combined,Year,Population)
+# Convert variable types to match their counterparts
+PopData$Year <- as.numeric(PopData$Year)
 ```
 
 
@@ -185,7 +187,12 @@ pal_prop_avg <- colorNumeric("viridis", domain = DF_Shp_County$Prop_Opioid_Repor
 
 
 ```{r}
-DF_Shp <- PopData  %>% 
-  full_join(DF_Shp, by = c("Year", "FIPS_Combined"))
+Pop_Shp <- county_shp  %>% 
+  inner_join(PopData, by = "FIPS_Combined")
+
+DF_Prop <- DF %>%
+  group_by(Year, FIPS_Combined, County) %>%
+  summarize(Prop_Opioid_Reports_County = mean(Prop_Opioid_Reports_County)) %>%
+  full_join(Pop_Shp, by = c("Year", "FIPS_Combined", "County"))
 ```
 
