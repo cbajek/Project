@@ -17,25 +17,182 @@ PopData <- read_csv("PopData1.csv")
 
 
 ```{r}
-# Getting FIPS County Code to be 3 digits
+# Pad FIPS County code to 3 digits
 PopData <- PopData %>% 
   mutate(FIPS_County = str_pad(string = COUNTY, width = 3, pad = "0", side = "left"))
 
-# Getting FIPS_Combined
+# Combine FIPS State and FIPS County
 PopData <- PopData %>% 
-  mutate(FIPS_Combined = as.numeric(paste(PopData$STATE, PopData$FIPS_County, sep = "")))
+  mutate(FIPS_Combined = paste(PopData$STATE, PopData$FIPS_County, sep = ""))
 
-# Delete the word county
+# Extract county names
 PopData <- PopData %>%
-  mutate(County=str_remove(PopData$CTYNAME," County"))
+  mutate(County = str_remove(PopData$CTYNAME, " County"))
 
-# Rename Variables
+# Rename variables
 PopData <- PopData %>%
-  rename(FIPS_State=STATE)
+  rename(FIPS_State = STATE)
 
-# Select Wanted Variables
+# Select necessary variables
 PopData <- PopData %>%
-  select(County,FIPS_State,FIPS_County,FIPS_Combined,POPESTIMATE2010,
-         POPESTIMATE2011,POPESTIMATE2012,POPESTIMATE2013,POPESTIMATE2014,
-         POPESTIMATE2015,POPESTIMATE2016,POPESTIMATE2017)
+  select(County, FIPS_County, FIPS_State, FIPS_Combined, POPESTIMATE2010,
+         POPESTIMATE2011, POPESTIMATE2012, POPESTIMATE2013, POPESTIMATE2014,
+         POPESTIMATE2015, POPESTIMATE2016, POPESTIMATE2017)
+
+# Pivot longer
+PopData <- PopData %>% 
+  pivot_longer(cols = c("POPESTIMATE2010", "POPESTIMATE2011", "POPESTIMATE2012",
+                        "POPESTIMATE2013", "POPESTIMATE2014", "POPESTIMATE2015",
+                        "POPESTIMATE2016", "POPESTIMATE2017"), 
+               names_to = "Year", 
+               values_to = "Population")
+
+# Filter out observations at the state level
+PopData <- PopData %>% 
+  filter(FIPS_County != "000")
+
+# Rename year values
+PopData$Year[PopData$Year == "POPESTIMATE2010"] <- 2010
+PopData$Year[PopData$Year == "POPESTIMATE2011"] <- 2011
+PopData$Year[PopData$Year == "POPESTIMATE2012"] <- 2012
+PopData$Year[PopData$Year == "POPESTIMATE2013"] <- 2013
+PopData$Year[PopData$Year == "POPESTIMATE2014"] <- 2014
+PopData$Year[PopData$Year == "POPESTIMATE2015"] <- 2015
+PopData$Year[PopData$Year == "POPESTIMATE2016"] <- 2016
+PopData$Year[PopData$Year == "POPESTIMATE2017"] <- 2017
+
+# Select necessary variables
+PopData <- PopData %>%
+  select(Year, County, FIPS_Combined, Population)
+
+# Convert variable types to match their counterparts
+PopData$Year <- as.numeric(PopData$Year)
 ```
+
+
+```{r}
+DF <- read_csv("MCM_NFLIS_Data.csv",
+               col_types = cols(FIPS_Combined = col_character(),
+                                FIPS_State = col_character()))
+
+# Rename variables
+DF <- DF %>%
+  rename(
+    Year = YYYY,
+    County = COUNTY,
+    Substance = SubstanceName,
+    Opioid_Reports = DrugReports,
+    Total_Drug_Reports_County = TotalDrugReportsCounty,
+    Total_Drug_Reports_State = TotalDrugReportsState
+  )
+
+# Change county names to lowercase
+DF$County <- tolower(DF$County)
+DF$County <- paste(toupper(substr(DF$County, 1, 1)),
+                   substr(DF$County, 2, nchar(DF$County)), sep="")
+
+# Compute total opioid reports for each year and county
+Annual_County <- DF %>%
+  group_by(Year, FIPS_Combined) %>%
+  summarize(Total_Opioid_Reports_County = sum(Opioid_Reports))
+
+# Compute total opioid reports for each year and state
+Annual_State <- DF %>%
+  group_by(Year, FIPS_State) %>%
+  summarize(Total_Opioid_Reports_State = sum(Opioid_Reports))
+
+# Join opioid totals back to original dataset
+DF <- DF %>%
+  inner_join(Annual_County, by = c("Year", "FIPS_Combined")) %>%
+  inner_join(Annual_State, by = c("Year", "FIPS_State"))
+
+# Compute the proportion of opioid reports
+DF <- DF %>%
+  mutate(Prop_Opioid_Reports_County = Total_Opioid_Reports_County / Total_Drug_Reports_County) %>%
+  mutate(Prop_Opioid_Reports_State = Total_Opioid_Reports_State / Total_Drug_Reports_State)
+
+# Duplicate observations from missing counties
+Dup_DF <- DF %>%
+  subset(FIPS_Combined == 51770)
+Dup_DF$County <- "Roanoke city"
+Dup_DF$FIPS_County <- 161
+Dup_DF$FIPS_Combined <- 51161
+DF <- rbind(DF, Dup_DF)
+
+# Reorder rows
+DF <- DF %>%
+  arrange(Year)
+
+# Reorder columns
+DF <- DF[c(1,2,3,4,5,6,7,8,11,12,9,10,13,14)]
+
+# Read in the shape files
+county_shp <- st_read("UScounties/UScounties.shp", quiet = TRUE)
+state_shp <- st_read("states_21basic/states.shp", quiet = TRUE)
+
+# Extract relevant states and variables
+county_shp <- county_shp %>%
+  filter(STATE_FIPS %in% c(21, 39, 42, 51, 54)) %>%
+  mutate(FIPS_Combined = as.character(FIPS)) %>%
+  select(FIPS_Combined, geometry)
+
+state_shp <- state_shp %>%
+  filter(STATE_FIPS %in% c(21, 39, 42, 51, 54)) %>%
+  mutate(FIPS_State = as.character(STATE_FIPS)) %>%
+  select(FIPS_State, geometry)
+
+# Join the county shape file to the dataframe
+DF_Shp <- county_shp %>%
+  inner_join(DF, by = "FIPS_Combined")
+
+# Summarize observations
+DF_Shp_Prop <- DF_Shp %>%
+  group_by(Year, FIPS_Combined, County) %>%
+  summarize(Prop_Opioid_Reports_County = mean(Prop_Opioid_Reports_County))
+
+DF_TotalDrug <- DF %>%
+  group_by(Year, FIPS_Combined, County) %>%
+  summarize(Total_Drug_Reports_County = mean(Total_Drug_Reports_County))
+
+DF_Shp <- DF_Shp_Prop %>%
+  inner_join(DF_TotalDrug, by = c("Year", "FIPS_Combined", "County"))
+
+# Create new obeservations for missing counties
+
+
+# Create the color palattes
+pal_prop_opioid <- colorNumeric("viridis", domain = DF_Shp$Prop_Opioid_Reports_County)
+pal_total_drug <- colorNumeric("viridis", domain = DF_Shp$Total_Drug_Reports_County)
+
+
+
+# Aggregate and average over the seven year span
+DF_Shp_County <- county_shp %>%
+  inner_join(DF, by = "FIPS_Combined")
+
+DF_Shp_State <- state_shp %>%
+  inner_join(DF, by = "FIPS_State")
+
+DF_Shp_County <- DF_Shp_County %>%
+  group_by(FIPS_Combined, County) %>%
+  summarize(Prop_Opioid_Reports_County = mean(Prop_Opioid_Reports_County))
+
+DF_Shp_State <- DF_Shp_State %>%
+  group_by(FIPS_State, State) %>%
+  summarize(Prop_Opioid_Reports_State = mean(Prop_Opioid_Reports_State))
+
+pal_prop_avg <- colorNumeric("viridis", domain = DF_Shp_County$Prop_Opioid_Reports_County)
+
+```
+
+
+```{r}
+Pop_Shp <- county_shp  %>% 
+  inner_join(PopData, by = "FIPS_Combined")
+
+DF_Prop <- DF %>%
+  group_by(Year, FIPS_Combined, County) %>%
+  summarize(Prop_Opioid_Reports_County = mean(Prop_Opioid_Reports_County)) %>%
+  full_join(Pop_Shp, by = c("Year", "FIPS_Combined", "County"))
+```
+
