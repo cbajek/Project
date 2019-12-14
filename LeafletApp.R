@@ -113,15 +113,27 @@ DF_Shp_County <- county_shp %>%
 DF_Shp_State <- state_shp %>%
   inner_join(DF, by = "FIPS_State")
 
-DF_Shp_County <- DF_Shp_County %>%
+DF_Shp_County_Prop <- DF_Shp_County %>%
   group_by(FIPS_Combined, County) %>%
-  summarize(Prop_Opioid_Reports_County = mean(Prop_Opioid_Reports_County))
+  summarize(Prop_Opioid_Reports = mean(Prop_Opioid_Reports_County))
 
-DF_Shp_State <- DF_Shp_State %>%
+DF_County_TotalDrug <- DF %>%
+  group_by(FIPS_Combined, County) %>%
+  summarize(Total_Drug_Reports = mean(Total_Drug_Reports_County))
+
+DF_Shp_County_All <- DF_Shp_County_Prop %>%
+  inner_join(DF_County_TotalDrug, by = c("FIPS_Combined", "County"))
+
+DF_Shp_State_Prop <- DF_Shp_State %>%
   group_by(FIPS_State, State) %>%
-  summarize(Prop_Opioid_Reports_State = mean(Prop_Opioid_Reports_State))
+  summarize(Prop_Opioid_Reports = mean(Prop_Opioid_Reports_State))
 
-pal_prop_avg <- colorNumeric("viridis", domain = DF_Shp_County$Prop_Opioid_Reports_County)
+DF_State_TotalDrug <- DF %>%
+  group_by(FIPS_State, State) %>%
+  summarize(Total_Drug_Reports = mean(Total_Drug_Reports_State))
+
+DF_Shp_State_All <- DF_Shp_State_Prop %>%
+  inner_join(DF_State_TotalDrug, by = c("FIPS_State", "State"))
 
 
 
@@ -133,15 +145,15 @@ ui <- fluidPage(
   hr(),
   sliderInput(inputId = "years", label = "Year Range",
               min = 2010, max = 2017, value = 2010, sep = ""),
-  # selectInput(inputId = "stat", label = "Statistic", 
-  #             choices = list("Proportion of Opioid Reports" = "Prop_Opioid_Reports_County",
-  #                            "Total Drug Reports" = "Total_Drug_Reports_County")),
   h3(strong("Spatial Summary of Opioid Use")),
   leafletOutput("AppMap"),
   h3(strong("Annual Breakdown by Substance Type")),
   plotOutput(outputId = "timeplot"),
   hr(),
   h3(strong("State and County -- Seven Year Averages")),
+  selectInput(inputId = "stat", label = "Statistic",
+              choices = list("Proportion of Opioid Reports" = "Prop_Opioid_Reports",
+                             "Total Drug Reports" = "Total_Drug_Reports")),
   leafletOutput("AppMapAvg")
 )
 
@@ -154,13 +166,13 @@ server <- function(input, output, session) {
         addTiles(group = "Default Map") %>%
         addPolygons(group = "Proportion of Opioid Reports",
                     stroke = FALSE,
-                    label = ~paste(County, round(Prop_Opioid_Reports_County, digits = 2)),
+                    label = ~paste(County, ":", round(Prop_Opioid_Reports_County, digits = 2)),
                     fillColor = ~pal_prop_opioid(Prop_Opioid_Reports_County),
                     fillOpacity = 0.75,
                     smoothFactor = 0.5) %>%
         addPolygons(group = "Total Drug Reports",
                     stroke = FALSE,
-                    label = ~County,
+                    label = ~paste(County, ":", Total_Drug_Reports_County),
                     fillColor = ~pal_total_drug(Total_Drug_Reports_County),
                     fillOpacity = 0.75,
                     smoothFactor = 0.5) %>%
@@ -206,20 +218,30 @@ server <- function(input, output, session) {
       theme_minimal()
   })
   output$AppMapAvg <- renderLeaflet({
-    leaflet(data = DF_Shp_County) %>%
+    if (input$stat == "Prop_Opioid_Reports") {
+        pal <- colorNumeric("viridis", domain = DF_Shp_County_All$Prop_Opioid_Reports)
+        var <- DF_Shp_County_All$Prop_Opioid_Reports
+        legendTitle <- "Proportion <br> of Opioid <br> Reports"
+    }
+    else if (input$stat == "Total_Drug_Reports") {
+        pal <- colorNumeric("viridis", domain = DF_Shp_State_All$Total_Drug_Reports)
+        var <- DF_Shp_State_All$Total_Drug_Reports
+        legendTitle <- "Total <br> Drug <br> Reports"
+    }
+    leaflet(data = DF_Shp_County_All) %>%
       addTiles() %>%
       addTiles(group = "Default Map") %>%
       addPolygons(group = "County Data",
                   stroke = FALSE,
-                  label = ~County,
-                  fillColor = ~pal_prop_avg(Prop_Opioid_Reports_County),
+                  label = ~paste(County, ":", round(var, digits = 2)),
+                  fillColor = ~pal(var),
                   fillOpacity = 1,
                   smoothFactor = 0.5) %>%
-      addPolygons(data = DF_Shp_State,
+      addPolygons(data = DF_Shp_State_All,
                   group = "State Data",
                   stroke = FALSE,
-                  label = ~State,
-                  fillColor = ~pal_prop_avg(Prop_Opioid_Reports_State),
+                  label = ~paste(State, ":", round(var, digits = 2)),
+                  fillColor = ~pal(var),
                   fillOpacity = 1,
                   smoothFactor = 0.5) %>%
       addPolygons(data = state_shp,
@@ -233,10 +255,10 @@ server <- function(input, output, session) {
         baseGroups = c("Default Map", "County Data", "State Data"),
         overlayGroups = c("State Outlines"),
         options = layersControlOptions(collapsed = FALSE)) %>%
-      addLegend(pal = pal_prop_avg,
-                values = ~Prop_Opioid_Reports_County,
+      addLegend(pal = pal,
+                values = ~var,
                 opacity = 1,
-                title = "Proportion <br> of Opioid <br> Reports",
+                title = legendTitle,
                 position = "bottomright") %>%
       hideGroup("County Data") %>%
       hideGroup("State Data") %>%
@@ -245,4 +267,3 @@ server <- function(input, output, session) {
 }
 
 shinyApp(ui = ui, server = server)
-
