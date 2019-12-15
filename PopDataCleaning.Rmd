@@ -7,7 +7,14 @@ output: html_document
 
 ```{r}
 library(tidyverse)
+library(devtools)
+library(ggplot2)
+library(openintro)
+library(maps)
+library(sf)
 library(stringr)
+library(leaflet)
+library(ggthemes)
 ```
 
 
@@ -187,12 +194,12 @@ pal_prop_avg <- colorNumeric("viridis", domain = DF_Shp_County$Prop_Opioid_Repor
 
 
 ```{r}
-Pop_Shp <- county_shp  %>% 
+Shp_Pop <- county_shp  %>% 
   inner_join(PopData, by = "FIPS_Combined")
 
-DF_Prop <- DF %>%
+DF_Shp_Prop <- DF %>%
   group_by(Year, FIPS_Combined, County) %>%
   summarize(Prop_Opioid_Reports_County = mean(Prop_Opioid_Reports_County)) %>%
-  full_join(Pop_Shp, by = c("Year", "FIPS_Combined", "County"))
+  full_join(Shp_Pop, by = c("Year", "FIPS_Combined", "County"))
 ```
 

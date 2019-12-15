@@ -10,6 +10,68 @@ library(leaflet)
 library(ggthemes)
 library(shinythemes)
 
+
+
+########## POPULATION DATA ##########
+
+# Read population data into R
+PopData <- read_csv("PopData1.csv") 
+
+# Pad FIPS County code to 3 digits
+PopData <- PopData %>% 
+  mutate(FIPS_County = str_pad(string = COUNTY, width = 3, pad = "0", side = "left"))
+
+# Combine FIPS State and FIPS County
+PopData <- PopData %>% 
+  mutate(FIPS_Combined = paste(PopData$STATE, PopData$FIPS_County, sep = ""))
+
+# Extract county names
+PopData <- PopData %>%
+  mutate(County = str_remove(PopData$CTYNAME, " County"))
+
+# Rename variables
+PopData <- PopData %>%
+  rename(FIPS_State = STATE)
+
+# Select necessary variables
+PopData <- PopData %>%
+  select(County, FIPS_County, FIPS_State, FIPS_Combined, POPESTIMATE2010,
+         POPESTIMATE2011, POPESTIMATE2012, POPESTIMATE2013, POPESTIMATE2014,
+         POPESTIMATE2015, POPESTIMATE2016, POPESTIMATE2017)
+
+# Pivot longer
+PopData <- PopData %>% 
+  pivot_longer(cols = c("POPESTIMATE2010", "POPESTIMATE2011", "POPESTIMATE2012",
+                        "POPESTIMATE2013", "POPESTIMATE2014", "POPESTIMATE2015",
+                        "POPESTIMATE2016", "POPESTIMATE2017"), 
+               names_to = "Year", 
+               values_to = "Population")
+
+# Filter out observations at the state level
+PopData <- PopData %>% 
+  filter(FIPS_County != "000")
+
+# Rename year values
+PopData$Year[PopData$Year == "POPESTIMATE2010"] <- 2010
+PopData$Year[PopData$Year == "POPESTIMATE2011"] <- 2011
+PopData$Year[PopData$Year == "POPESTIMATE2012"] <- 2012
+PopData$Year[PopData$Year == "POPESTIMATE2013"] <- 2013
+PopData$Year[PopData$Year == "POPESTIMATE2014"] <- 2014
+PopData$Year[PopData$Year == "POPESTIMATE2015"] <- 2015
+PopData$Year[PopData$Year == "POPESTIMATE2016"] <- 2016
+PopData$Year[PopData$Year == "POPESTIMATE2017"] <- 2017
+
+# Select necessary variables
+PopData <- PopData %>%
+  select(Year, FIPS_Combined, Population)
+
+# Convert variable types to match their counterparts
+PopData$Year <- as.numeric(PopData$Year)
+
+
+
+########## OPIOID DATA ##########
+
 # Read the opioid data into R
 DF <- read_csv("MCM_NFLIS_Data.csv",
                col_types = cols(FIPS_Combined = col_character(),
@@ -46,10 +108,33 @@ DF <- DF %>%
   inner_join(Annual_County, by = c("Year", "FIPS_Combined")) %>%
   inner_join(Annual_State, by = c("Year", "FIPS_State"))
 
+# Join population data to opioid data
+DF <- DF  %>% 
+  inner_join(PopData, by = c("Year", "FIPS_Combined"))
+
+# Compute total population for each year and state
+Annual_State_Pop <- DF %>%
+  group_by(Year, FIPS_State) %>%
+  summarize(Population_State = sum(Population))
+
+# Join population total back to original dataset
+DF <- DF %>%
+  inner_join(Annual_State_Pop, by = c("Year", "FIPS_State"))
+
 # Compute the proportion of opioid reports
 DF <- DF %>%
   mutate(Prop_Opioid_Reports_County = Total_Opioid_Reports_County / Total_Drug_Reports_County) %>%
   mutate(Prop_Opioid_Reports_State = Total_Opioid_Reports_State / Total_Drug_Reports_State)
+
+# Compute per capita opioid reports
+DF <- DF %>%
+  mutate(Percap_Opioid_Reports_County = Total_Opioid_Reports_County / Population) %>%
+  mutate(Percap_Opioid_Reports_State = Total_Opioid_Reports_State / Population_State)
+
+# Compute per capita drug reports
+DF <- DF %>%
+  mutate(Percap_Drug_Reports_County = Total_Drug_Reports_County / Population) %>%
+  mutate(Percap_Drug_Reports_State = Total_Drug_Reports_State / Population_State)
 
 # Duplicate observations from missing counties
 Dup_DF <- DF %>%
@@ -64,7 +149,11 @@ DF <- DF %>%
   arrange(Year)
 
 # Reorder columns
-DF <- DF[c(1,2,3,4,5,6,7,8,11,12,9,10,13,14)]
+DF <- DF[c(1,2,3,4,5,6,7,8,11,12,9,10,15,16,17,18,19,20,13,14)]
+
+
+
+########## SHAPE FILE DATA ##########
 
 # Read in the shape files
 county_shp <- st_read("UScounties/UScounties.shp", quiet = TRUE)
@@ -81,30 +170,29 @@ state_shp <- state_shp %>%
   mutate(FIPS_State = as.character(STATE_FIPS)) %>%
   select(FIPS_State, geometry)
 
+
+
+########## SUMMARIZATION ##########
+
 # Join the county shape file to the dataframe
 DF_Shp <- county_shp %>%
   inner_join(DF, by = "FIPS_Combined")
 
-# Summarize observations
+# Summarize observations by year and county
 DF_Shp_Prop <- DF_Shp %>%
   group_by(Year, FIPS_Combined, County) %>%
   summarize(Prop_Opioid_Reports_County = mean(Prop_Opioid_Reports_County))
 
-DF_TotalDrug <- DF %>%
+DF_PercapOpioid <- DF %>%
   group_by(Year, FIPS_Combined, County) %>%
-  summarize(Total_Drug_Reports_County = mean(Total_Drug_Reports_County))
+  summarize(Percap_Opioid_Reports_County = mean(Percap_Opioid_Reports_County))
 
 DF_Shp <- DF_Shp_Prop %>%
-  inner_join(DF_TotalDrug, by = c("Year", "FIPS_Combined", "County"))
-
-# Create new obeservations for missing counties
-
+  inner_join(DF_PercapOpioid, by = c("Year", "FIPS_Combined", "County"))
 
 # Create the color palattes
 pal_prop_opioid <- colorNumeric("viridis", domain = DF_Shp$Prop_Opioid_Reports_County)
-pal_total_drug <- colorNumeric("viridis", domain = DF_Shp$Total_Drug_Reports_County)
-
-
+pal_percap_opioid <- colorNumeric("viridis", domain = DF_Shp$Percap_Opioid_Reports_County)
 
 # Aggregate and average over the seven year span
 DF_Shp_County <- county_shp %>%
@@ -121,8 +209,23 @@ DF_County_TotalDrug <- DF %>%
   group_by(FIPS_Combined, County) %>%
   summarize(Total_Drug_Reports = mean(Total_Drug_Reports_County))
 
+DF_County_TotalOpioid <- DF %>%
+  group_by(FIPS_Combined, County) %>%
+  summarize(Total_Opioid_Reports = mean(Total_Opioid_Reports_County))
+
+DF_County_PercapDrug <- DF %>%
+  group_by(FIPS_Combined, County) %>%
+  summarize(Percap_Drug_Reports = mean(Percap_Drug_Reports_County))
+
+DF_County_PercapOpioid <- DF %>%
+  group_by(FIPS_Combined, County) %>%
+  summarize(Percap_Opioid_Reports = mean(Percap_Opioid_Reports_County))
+
 DF_Shp_County_All <- DF_Shp_County_Prop %>%
-  inner_join(DF_County_TotalDrug, by = c("FIPS_Combined", "County"))
+  inner_join(DF_County_TotalDrug, by = c("FIPS_Combined", "County")) %>%
+  inner_join(DF_County_TotalOpioid, by = c("FIPS_Combined", "County")) %>%
+  inner_join(DF_County_PercapDrug, by = c("FIPS_Combined", "County")) %>%
+  inner_join(DF_County_PercapOpioid, by = c("FIPS_Combined", "County"))
 
 DF_Shp_State_Prop <- DF_Shp_State %>%
   group_by(FIPS_State, State) %>%
@@ -132,8 +235,23 @@ DF_State_TotalDrug <- DF %>%
   group_by(FIPS_State, State) %>%
   summarize(Total_Drug_Reports = mean(Total_Drug_Reports_State))
 
+DF_State_TotalOpioid <- DF %>%
+  group_by(FIPS_State, State) %>%
+  summarize(Total_Opioid_Reports = mean(Total_Opioid_Reports_State))
+
+DF_State_PercapDrug <- DF %>%
+  group_by(FIPS_State, State) %>%
+  summarize(Percap_Drug_Reports = mean(Percap_Drug_Reports_State))
+
+DF_State_PercapOpioid <- DF %>%
+  group_by(FIPS_State, State) %>%
+  summarize(Percap_Opioid_Reports = mean(Percap_Opioid_Reports_State))
+
 DF_Shp_State_All <- DF_Shp_State_Prop %>%
-  inner_join(DF_State_TotalDrug, by = c("FIPS_State", "State"))
+  inner_join(DF_State_TotalDrug, by = c("FIPS_State", "State")) %>%
+  inner_join(DF_State_TotalOpioid, by = c("FIPS_State", "State")) %>%
+  inner_join(DF_State_PercapDrug, by = c("FIPS_State", "State")) %>%
+  inner_join(DF_State_PercapOpioid, by = c("FIPS_State", "State"))
 
 
 
@@ -153,7 +271,10 @@ ui <- fluidPage(
   h3(strong("State and County -- Seven Year Averages")),
   selectInput(inputId = "stat", label = "Statistic",
               choices = list("Proportion of Opioid Reports" = "Prop_Opioid_Reports",
-                             "Total Drug Reports" = "Total_Drug_Reports")),
+                             "Total Drug Reports" = "Total_Drug_Reports",
+                             "Total Opioid Reports" = "Total_Opioid_Reports",
+                             "Per Capita Drug Reports" = "Percap_Drug_Reports",
+                             "Per Capita Opioid Reports" = "Percap_Opioid_Reports")),
   leafletOutput("AppMapAvg")
 )
 
@@ -170,10 +291,10 @@ server <- function(input, output, session) {
                     fillColor = ~pal_prop_opioid(Prop_Opioid_Reports_County),
                     fillOpacity = 0.75,
                     smoothFactor = 0.5) %>%
-        addPolygons(group = "Total Drug Reports",
+        addPolygons(group = "Per Capita Opioid Reports",
                     stroke = FALSE,
-                    label = ~paste(County, ":", Total_Drug_Reports_County),
-                    fillColor = ~pal_total_drug(Total_Drug_Reports_County),
+                    label = ~paste(County, ":", round(Percap_Opioid_Reports_County, digits = 3)),
+                    fillColor = ~pal_percap_opioid(Percap_Opioid_Reports_County),
                     fillOpacity = 0.75,
                     smoothFactor = 0.5) %>%
         addPolygons(data = state_shp,
@@ -189,14 +310,14 @@ server <- function(input, output, session) {
                   opacity = 1,
                   title = "Proportion <br> of Opioid <br> Reports",
                   position = "bottomright") %>%
-        addLegend(group = "Total Drug Reports",
-                  pal = pal_total_drug,
-                  values = c(0, 10000),
+        addLegend(group = "Per Capita Opioid Reports",
+                  pal = pal_percap_opioid,
+                  values = c(0, 0.015),
                   opacity = 1,
-                  title = "Total <br> Drug <br> Reports",
+                  title = "Per <br> Capita <br> Opioid <br> Reports",
                   position = "bottomleft") %>%
         addLayersControl(
-                  baseGroups = c("Default Map", "Proportion of Opioid Reports", "Total Drug Reports"),
+                  baseGroups = c("Default Map", "Proportion of Opioid Reports", "Per Capita Opioid Reports"),
                   overlayGroups = c("State Outlines"),
                   options = layersControlOptions(collapsed = FALSE)) %>%
         hideGroup("State Outlines")
@@ -228,19 +349,34 @@ server <- function(input, output, session) {
         var <- DF_Shp_State_All$Total_Drug_Reports
         legendTitle <- "Total <br> Drug <br> Reports"
     }
+    else if (input$stat == "Total_Opioid_Reports") {
+        pal <- colorNumeric("viridis", domain = DF_Shp_State_All$Total_Opioid_Reports)
+        var <- DF_Shp_State_All$Total_Opioid_Reports
+        legendTitle <- "Total <br> Opioid <br> Reports"
+    }
+    else if (input$stat == "Percap_Drug_Reports") {
+        pal <- colorNumeric("viridis", domain = DF_Shp_State_All$Percap_Drug_Reports)
+        var <- DF_Shp_State_All$Percap_Drug_Reports
+        legendTitle <- "Percap <br> Drug <br> Reports"
+    }
+    else if (input$stat == "Percap_Opioid_Reports") {
+        pal <- colorNumeric("viridis", domain = DF_Shp_State_All$Percap_Opioid_Reports)
+        var <- DF_Shp_State_All$Percap_Opioid_Reports
+        legendTitle <- "Percap <br> Opioid <br> Reports"
+    }
     leaflet(data = DF_Shp_County_All) %>%
       addTiles() %>%
       addTiles(group = "Default Map") %>%
       addPolygons(group = "County Data",
                   stroke = FALSE,
-                  label = ~paste(County, ":", round(var, digits = 2)),
+                  label = ~paste(County, ":", round(var, digits = 3)),
                   fillColor = ~pal(var),
                   fillOpacity = 1,
                   smoothFactor = 0.5) %>%
       addPolygons(data = DF_Shp_State_All,
                   group = "State Data",
                   stroke = FALSE,
-                  label = ~paste(State, ":", round(var, digits = 2)),
+                  label = ~paste(State, ":", round(var, digits = 3)),
                   fillColor = ~pal(var),
                   fillOpacity = 1,
                   smoothFactor = 0.5) %>%
