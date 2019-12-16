@@ -26,6 +26,7 @@ library(ggthemes)
 library(shinythemes)
 
 
+
 ########## POPULATION DATA ##########
 
 # Read population data into R
@@ -157,6 +158,12 @@ Dup_DF$County <- "Roanoke city"
 Dup_DF$FIPS_County <- 161
 Dup_DF$FIPS_Combined <- 51161
 DF <- rbind(DF, Dup_DF)
+
+All_Obs <- PopData %>%
+  select(Year, FIPS_Combined)
+
+DF %>%
+  full_join(All_Obs, by = c("Year", "FIPS_Combined"))
 
 # Reorder rows
 DF <- DF %>%

@@ -144,6 +144,14 @@ Dup_DF$FIPS_County <- 161
 Dup_DF$FIPS_Combined <- 51161
 DF <- rbind(DF, Dup_DF)
 
+# Select full dataset for county and year
+All_Obs <- PopData %>%
+  select(Year, FIPS_Combined)
+
+# Add missing observations
+DF <- DF %>%
+  full_join(All_Obs, by = c("Year", "FIPS_Combined"))
+
 # Reorder rows
 DF <- DF %>%
   arrange(Year)
@@ -193,6 +201,10 @@ DF_Shp <- DF_Shp_Prop %>%
 # Create the color palattes
 pal_prop_opioid <- colorNumeric("viridis", domain = DF_Shp$Prop_Opioid_Reports_County)
 pal_percap_opioid <- colorNumeric("viridis", domain = DF_Shp$Percap_Opioid_Reports_County)
+
+# Filter out missing observation
+DF <- DF %>%
+  drop_na()
 
 # Aggregate and average over the seven year span
 DF_Shp_County <- county_shp %>%
