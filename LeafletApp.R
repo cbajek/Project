@@ -276,19 +276,29 @@ ui <- fluidPage(
   hr(),
   sliderInput(inputId = "years", label = "Year Range",
               min = 2010, max = 2017, value = 2010, sep = ""),
-  h3(strong("Spatial Summary of Opioid Use")),
+  h3(strong("Spatio Temporal Summary of Opioid Use")),
   leafletOutput("AppMap"),
   h3(strong("Annual Breakdown by Substance Type")),
   plotOutput(outputId = "timeplot"),
   hr(),
-  h3(strong("State and County -- Seven Year Averages")),
+  h3(strong("State and County: Seven Year Averages")),
   selectInput(inputId = "stat", label = "Statistic",
               choices = list("Proportion of Opioid Reports" = "Prop_Opioid_Reports",
                              "Total Drug Reports" = "Total_Drug_Reports",
                              "Total Opioid Reports" = "Total_Opioid_Reports",
                              "Per Capita Drug Reports" = "Percap_Drug_Reports",
                              "Per Capita Opioid Reports" = "Percap_Opioid_Reports")),
-  leafletOutput("AppMapAvg")
+  leafletOutput("AppMapAvg"),
+  splitLayout(
+    plotlyOutput(outputId = "scatterplot"),
+    plotlyOutput(outputId = "boxplot")
+  ),
+  hr(),
+  h3(strong("Statewide Trends Over Time")),
+  splitLayout(
+    plotlyOutput(outputId = "line1plot"),
+    plotlyOutput(outputId = "line2plot")
+  )
 )
 
 server <- function(input, output, session) {
@@ -336,63 +346,74 @@ server <- function(input, output, session) {
         hideGroup("State Outlines")
   })
   output$timeplot <- renderPlot({
-    ggplotly(DF %>%
-                filter(Year == input$years) %>%
-                group_by(Substance, Year) %>%
-                summarize(Sub_Total = sum(Opioid_Reports)) %>%
-                ungroup() %>%
-                arrange(desc(Sub_Total)) %>%
-                top_n(10) %>%
-                mutate(Substance = fct_inorder(Substance)) %>%
-                ggplot(aes(x = fct_rev(Substance), y = Sub_Total, fill = Substance)) +
-                geom_col() +
-                coord_flip() +
-                scale_fill_viridis_d() +
-                labs(x = "Substance", y = "Number of Opioid Reports") +
-                theme_minimal()
-    )
+    DF %>%
+      filter(Year == input$years) %>%
+      group_by(Substance, Year) %>%
+      summarize(Sub_Total = sum(Opioid_Reports)) %>%
+      ungroup() %>%
+      arrange(desc(Sub_Total)) %>%
+      top_n(10) %>%
+      mutate(Substance = fct_inorder(Substance)) %>%
+      ggplot(aes(x = fct_rev(Substance), y = Sub_Total, fill = Substance)) +
+      geom_col() +
+      coord_flip() +
+      scale_fill_viridis_d() +
+      labs(x = "Substance", y = "Number of Opioid Reports") +
+      theme_minimal() +
+      theme(axis.text.x = element_text(face = "bold")) +
+      theme(axis.text.y = element_text(face = "bold"))
   })
   output$AppMapAvg <- renderLeaflet({
     if (input$stat == "Prop_Opioid_Reports") {
-        pal <- colorNumeric("viridis", domain = DF_Shp_County_All$Prop_Opioid_Reports)
-        var <- DF_Shp_County_All$Prop_Opioid_Reports
+        palCounty <- colorNumeric("viridis", domain = DF_Shp_County_All$Prop_Opioid_Reports)
+        palState <- colorNumeric("viridis", domain = DF_Shp_State_All$Prop_Opioid_Reports)
+        varCounty <- DF_Shp_County_All$Prop_Opioid_Reports
+        varState <- DF_Shp_State_All$Prop_Opioid_Reports
         legendTitle <- "Proportion <br> of Opioid <br> Reports"
     }
     else if (input$stat == "Total_Drug_Reports") {
-        pal <- colorNumeric("viridis", domain = DF_Shp_State_All$Total_Drug_Reports)
-        var <- DF_Shp_State_All$Total_Drug_Reports
+        palCounty <- colorNumeric("viridis", domain = DF_Shp_County_All$Total_Drug_Reports)
+        palState <- colorNumeric("viridis", domain = DF_Shp_State_All$Total_Drug_Reports)
+        varCounty <- DF_Shp_County_All$Total_Drug_Reports
+        varState <- DF_Shp_State_All$Total_Drug_Reports
         legendTitle <- "Total <br> Drug <br> Reports"
     }
     else if (input$stat == "Total_Opioid_Reports") {
-        pal <- colorNumeric("viridis", domain = DF_Shp_State_All$Total_Opioid_Reports)
-        var <- DF_Shp_State_All$Total_Opioid_Reports
+        palCounty <- colorNumeric("viridis", domain = DF_Shp_County_All$Total_Opioid_Reports)
+        palState <- colorNumeric("viridis", domain = DF_Shp_State_All$Total_Opioid_Reports)
+        varCounty <- DF_Shp_County_All$Total_Opioid_Reports
+        varState <- DF_Shp_State_All$Total_Opioid_Reports
         legendTitle <- "Total <br> Opioid <br> Reports"
     }
     else if (input$stat == "Percap_Drug_Reports") {
-        pal <- colorNumeric("viridis", domain = DF_Shp_State_All$Percap_Drug_Reports)
-        var <- DF_Shp_State_All$Percap_Drug_Reports
-        legendTitle <- "Percap <br> Drug <br> Reports"
+        palCounty <- colorNumeric("viridis", domain = DF_Shp_County_All$Percap_Drug_Reports)
+        palState <- colorNumeric("viridis", domain = DF_Shp_State_All$Percap_Drug_Reports)
+        varCounty <- DF_Shp_County_All$Percap_Drug_Reports
+        varState <- DF_Shp_State_All$Percap_Drug_Reports
+        legendTitle <- "Per Capita <br> Drug <br> Reports"
     }
     else if (input$stat == "Percap_Opioid_Reports") {
-        pal <- colorNumeric("viridis", domain = DF_Shp_State_All$Percap_Opioid_Reports)
-        var <- DF_Shp_State_All$Percap_Opioid_Reports
-        legendTitle <- "Percap <br> Opioid <br> Reports"
+        palCounty <- colorNumeric("viridis", domain = DF_Shp_County_All$Percap_Opioid_Reports)
+        palState <- colorNumeric("viridis", domain = DF_Shp_State_All$Percap_Opioid_Reports)
+        varCounty <- DF_Shp_County_All$Percap_Opioid_Reports
+        varState <- DF_Shp_State_All$Percap_Opioid_Reports
+        legendTitle <- "Per Capita <br> Opioid <br> Reports"
     }
     leaflet(data = DF_Shp_County_All) %>%
       addTiles() %>%
       addTiles(group = "Default Map") %>%
       addPolygons(group = "County Data",
                   stroke = FALSE,
-                  label = ~paste(County, ":", round(var, digits = 3)),
-                  fillColor = ~pal(var),
-                  fillOpacity = 1,
+                  label = ~paste(County, ":", round(varCounty, digits = 3)),
+                  fillColor = ~palCounty(varCounty),
+                  fillOpacity = 0.75,
                   smoothFactor = 0.5) %>%
       addPolygons(data = DF_Shp_State_All,
                   group = "State Data",
                   stroke = FALSE,
-                  label = ~paste(State, ":", round(var, digits = 3)),
-                  fillColor = ~pal(var),
-                  fillOpacity = 1,
+                  label = ~paste(State, ":", round(varState, digits = 3)),
+                  fillColor = ~palState(varState),
+                  fillOpacity = 0.75,
                   smoothFactor = 0.5) %>%
       addPolygons(data = state_shp,
                   group = "State Outlines",
@@ -405,14 +426,82 @@ server <- function(input, output, session) {
         baseGroups = c("Default Map", "County Data", "State Data"),
         overlayGroups = c("State Outlines"),
         options = layersControlOptions(collapsed = FALSE)) %>%
-      addLegend(pal = pal,
-                values = ~var,
+      addLegend(pal = palState,
+                values = ~varState,
                 opacity = 1,
-                title = legendTitle,
-                position = "bottomright") %>%
+                title = paste("State Level: <br> ", legendTitle),
+                position = "bottomleft",
+                bins = 6) %>%
+      addLegend(pal = palCounty,
+                values = ~varCounty,
+                opacity = 1,
+                title = paste("County Level: <br> ", legendTitle),
+                position = "bottomright",
+                bins = 6) %>%
       hideGroup("County Data") %>%
       hideGroup("State Data") %>%
       hideGroup("State Outlines")
+  })
+  output$scatterplot <- renderPlotly({
+    ggplotly(DF %>%
+               group_by(County, State) %>%
+               summarize(Prop_Opioid_Reports = mean(Prop_Opioid_Reports_County),
+                         Percap_Opioid_Reports = mean(Percap_Opioid_Reports_County)) %>%
+               ggplot(aes(x = Percap_Opioid_Reports, y = Prop_Opioid_Reports, color = State, text = County)) +
+               geom_point(size = 0.75) +
+               scale_x_continuous(breaks = c(seq(0, 0.01, 0.001)), limits = c(0, 0.01)) +
+               scale_y_continuous(breaks = c(seq(0, 0.75, 0.15)), labels = scales::percent, 
+                                  limits = c(0, 0.75)) +
+               labs(x = "Per Capita Opioid Reports", y = "Proportion of Opioid Related Reports") +
+               ggtitle("Proportion Opioid by Per Capita Reports") +
+               theme_minimal() +
+               theme(axis.text.x = element_text(angle = 45, hjust = 1, face = "bold")) +
+               theme(axis.text.y = element_text(face = "bold")),
+             tooltip = c("County", "State")
+    )
+  })
+  output$boxplot <- renderPlotly({
+    ggplotly(DF %>%
+               group_by(County, State) %>%
+               summarize(Percap_Opioid_Reports = mean(Percap_Opioid_Reports_County)) %>%
+               ggplot(aes(x = State, y = Percap_Opioid_Reports, fill = State)) +
+               geom_boxplot() +
+               scale_y_continuous(breaks = c(seq(0, 0.85, 0.001)), 
+                                  limits = c(0, 0.01)) +
+               labs(x = "State", y = "Per Capita Opioid Reports") +
+               ggtitle("Per Capita Opioid Reports by State") +
+               theme_minimal() + 
+               theme(axis.text.x = element_text(face = "bold")) +
+               theme(axis.text.y = element_text(face = "bold"))
+    )
+  })
+  output$line1plot <- renderPlotly({
+    ggplotly(DF %>%
+               group_by(State, Year) %>%
+               summarize(Percap_Opioid_Reports = mean(Percap_Opioid_Reports_State)) %>%
+               ggplot(aes(x = Year, y = Percap_Opioid_Reports, color = State)) +
+               geom_line(size = 1) +
+               scale_x_continuous(breaks = c(seq(2010, 2017, 1)), limits = c(2010, 2017)) +
+               scale_y_continuous(breaks = c(seq(0, 0.0004, 0.0001)), limits = c(0, 0.0004)) +
+               labs(x = "Year", y = "Per Capita Opioid Reports") +
+               ggtitle("Per Capita Opioid Reports") +
+               theme_minimal(),
+             tooltip = c("Percap_Opioid_Reports", "Year")
+    )
+  })
+  output$line2plot <- renderPlotly({
+    ggplotly(DF %>%
+               group_by(State, Year) %>%
+               summarize(Prop_Opioid_Reports = mean(Prop_Opioid_Reports_State)) %>%
+               ggplot(aes(x = Year, y = Prop_Opioid_Reports, color = State)) +
+               geom_line(size = 1) +
+               scale_x_continuous(breaks = c(seq(2010, 2017, 1)), limits = c(2010, 2017)) +
+               scale_y_continuous(breaks = c(seq(0.20, 0.5, 0.05)), labels = scales::percent, limits = c(0.20, 0.5)) +
+               labs(x = "Year", y = "Percent") +
+               ggtitle("Proportion of Opioid Related Reports") +
+               theme_minimal(),
+             tooltip = c("Prop_Opioid_Reports", "Year")
+    )
   })
 }
 
