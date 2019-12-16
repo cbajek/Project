@@ -8,6 +8,7 @@ library(sf)
 library(stringr)
 library(leaflet)
 library(ggthemes)
+library(plotly)
 library(shinythemes)
 
 
@@ -335,20 +336,21 @@ server <- function(input, output, session) {
         hideGroup("State Outlines")
   })
   output$timeplot <- renderPlot({
-    DF %>%
-      filter(Year == input$years) %>%
-      group_by(Substance, Year) %>%
-      summarize(Sub_Total = sum(Opioid_Reports)) %>%
-      ungroup() %>%
-      arrange(desc(Sub_Total)) %>%
-      top_n(10) %>%
-      mutate(Substance = fct_inorder(Substance)) %>%
-      ggplot(aes(x = fct_rev(Substance), y = Sub_Total, fill = Substance)) +
-      geom_col() +
-      coord_flip() +
-      scale_fill_viridis_d() +
-      labs(x = "Substance", y = "Number of Opioid Reports") +
-      theme_minimal()
+    ggplotly(DF %>%
+                filter(Year == input$years) %>%
+                group_by(Substance, Year) %>%
+                summarize(Sub_Total = sum(Opioid_Reports)) %>%
+                ungroup() %>%
+                arrange(desc(Sub_Total)) %>%
+                top_n(10) %>%
+                mutate(Substance = fct_inorder(Substance)) %>%
+                ggplot(aes(x = fct_rev(Substance), y = Sub_Total, fill = Substance)) +
+                geom_col() +
+                coord_flip() +
+                scale_fill_viridis_d() +
+                labs(x = "Substance", y = "Number of Opioid Reports") +
+                theme_minimal()
+    )
   })
   output$AppMapAvg <- renderLeaflet({
     if (input$stat == "Prop_Opioid_Reports") {
