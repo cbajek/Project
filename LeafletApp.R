@@ -282,13 +282,14 @@ ui <- fluidPage(
   plotOutput(outputId = "timeplot"),
   hr(),
   h3(strong("State and County: Seven Year Averages")),
+  leafletOutput("AppMapAvg"),
   selectInput(inputId = "stat", label = "Statistic",
               choices = list("Proportion of Opioid Reports" = "Prop_Opioid_Reports",
                              "Total Drug Reports" = "Total_Drug_Reports",
                              "Total Opioid Reports" = "Total_Opioid_Reports",
                              "Per Capita Drug Reports" = "Percap_Drug_Reports",
                              "Per Capita Opioid Reports" = "Percap_Opioid_Reports")),
-  leafletOutput("AppMapAvg"),
+  hr(),
   splitLayout(
     plotlyOutput(outputId = "scatterplot"),
     plotlyOutput(outputId = "boxplot")
@@ -404,14 +405,14 @@ server <- function(input, output, session) {
       addTiles(group = "Default Map") %>%
       addPolygons(group = "County Data",
                   stroke = FALSE,
-                  label = ~paste(County, ":", round(varCounty, digits = 3)),
+                  label = ~paste(County, ":", round(varCounty, digits = 4)),
                   fillColor = ~palCounty(varCounty),
                   fillOpacity = 0.75,
                   smoothFactor = 0.5) %>%
       addPolygons(data = DF_Shp_State_All,
                   group = "State Data",
                   stroke = FALSE,
-                  label = ~paste(State, ":", round(varState, digits = 3)),
+                  label = ~paste(State, ":", round(varState, digits = 4)),
                   fillColor = ~palState(varState),
                   fillOpacity = 0.75,
                   smoothFactor = 0.5) %>%
