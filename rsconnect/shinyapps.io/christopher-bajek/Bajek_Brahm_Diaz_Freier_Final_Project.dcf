@@ -5,9 +5,9 @@ account: christopher-bajek
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 1605815
-bundleId: 2674494
+bundleId: 2674505
 url: https://christopher-bajek.shinyapps.io/Bajek_Brahm_Diaz_Freier_Final_Project/
-when: 1576560339.44562
+when: 1576560591.88203
 asMultiple: FALSE
 asStatic: FALSE
 ignoredFiles: Project_Ideas_files/figure-html/unnamed-chunk-3-1.png|Project_Ideas_files/figure-html/unnamed-chunk-4-1.png
