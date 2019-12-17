@@ -345,7 +345,7 @@ server <- function(input, output, session) {
                   title = "Per <br> Capita <br> Opioid <br> Reports",
                   position = "bottomleft") %>%
         addLayersControl(
-                  baseGroups = c("Default Map", "Proportion of Opioid Reports", "Per Capita Opioid Reports"),
+                  baseGroups = c("Proportion of Opioid Reports", "Per Capita Opioid Reports", "Default Map"),
                   overlayGroups = c("State Outlines"),
                   options = layersControlOptions(collapsed = FALSE)) %>%
         hideGroup("State Outlines")
@@ -428,7 +428,7 @@ server <- function(input, output, session) {
                   opacity = 1,
                   color = "black") %>%
       addLayersControl(
-        baseGroups = c("Default Map", "County Data", "State Data"),
+        baseGroups = c("County Data", "State Data", "Default Map"),
         overlayGroups = c("State Outlines"),
         options = layersControlOptions(collapsed = FALSE)) %>%
       addLegend(pal = palState,
