@@ -10,7 +10,11 @@ library(leaflet)
 library(ggthemes)
 library(plotly)
 library(shinythemes)
+library(rsconnect)
 
+rsconnect::setAccountInfo(name='christopher-bajek',
+                          token='91CBFE1011C3781115A0A0BE9E678646',
+                          secret='fUPqezOrERMFBMaT8uNOoemJN1Je5eRQwDBZY/dj')
 
 
 ########## POPULATION DATA ##########
